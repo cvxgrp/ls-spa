@@ -36,7 +36,7 @@ to correctly install JAX.
 
 ## Usage
 
-We assume that you have imported LS-SPA and you have a $p\times N$
+We assume that you have imported `ls_spa` and you have a $p\times N$
 matrix of training data `X_train`, a $p\times M$ matrix of testing data `X_tst`,
 a $N$ vector of training labels `y_train`, and a $M$ vector of testing labels `y_test`.
 In this case, you can find the Shapley attribution of the test $R^2$ on your data by
@@ -47,36 +47,6 @@ S = np.array(ls_spa(X, X_tst, y, y_tst).attribution
 ```
 
 `S` will be a JAX vector containing the Shapley values of your features.
-
-## Hello world
-
-We present a complete Python script that utilizes LS-SPA to compute
-the Shapley attribution on the data from the toy example described 
-in the companion paper.
-
-```
-# Imports
-import numpy as np
-from ls_spa import ls_spa
-
-# Data loading
-X_train = np.load("./data/X_train.npy")
-X_test = np.load("./data/X_test.npy")
-y_train = np.load("./data/y_train.npy")
-y_test = np.load("./data/y_test.npy")
-
-# Compute Shapley attribution with LS-SPA
-S = np.array(ls_spa(X_train, X_test, y_train, y_test).attribution
-
-# Print attribution
-print("LS-SPA Shapley attribution: {}".format(S))
-```
-
-This simple example uses the data included in the data directory of this
-repository.
-
-## Advanced usage
-
 The `ls_spa` function computes Shapley values for the given data using
 the LS-SPA method described in the companion paper. It takes arguments:
 
@@ -104,6 +74,33 @@ has the fields:
   `None` if `return_history=False` in `LSSA` call.
 - `attribution_errors`: Array of absolute errors for each feature.
 - `r_squared`: R-squared statistic of the regression.
+
+## Hello world
+
+We present a complete Python script that utilizes LS-SPA to compute
+the Shapley attribution on the data from the toy example described 
+in the companion paper.
+
+```
+# Imports
+import numpy as np
+from ls_spa import ls_spa
+
+# Data loading
+X_train = np.load("./data/X_train.npy")
+X_test = np.load("./data/X_test.npy")
+y_train = np.load("./data/y_train.npy")
+y_test = np.load("./data/y_test.npy")
+
+# Compute Shapley attribution with LS-SPA
+S = np.array(ls_spa(X_train, X_test, y_train, y_test).attribution
+
+# Print attribution
+print("LS-SPA Shapley attribution: {}".format(S))
+```
+
+This simple example uses the data included in the data directory of this
+repository.
 
 ## Example notebook
 
