@@ -19,7 +19,7 @@ from ls_spa import ls_spa
 ```
 to the top of your python file.
 
-`lsspa` has the following dependencies:
+`ls_spa` has the following dependencies:
 - `numpy`
 - `scipy`
 - `pandas`
@@ -45,10 +45,35 @@ executing
 ```
 S = np.array(ls_spa(X, X_tst, y, y_tst).attribution
 ```
+
 `S` will be a JAX vector containing the Shapley values of your features.
 
+## Hello world
+
+We present a complete Python script that utilizes LS-SPA to compute
+the Shapley attribution on the data from the toy example described 
+in the LS-SPA paper.
+
+```
+# Imports
+import numpy as np
+from ls_spa import ls_spa
+
+# Data loading
+X_train = np.load("./data/X_train.npy")
+X_test = np.load("./data/X_test.npy")
+y_train = np.load("./data/y_train.npy")
+y_test = np.load("./data/y_test.npy")
+
+# Compute Shapley attribution with LS-SPA
+S = np.array(ls_spa(X_train, X_test, y_train, y_test).attribution
+
+# Print attribution
+print("LS-SPA Shapley attribution: {}".format(S))
+```
 
 ## Example notebook
 
-An example usage of LS-SPA can be found in this [notebook](./shapley_toy.ipynb).
+An more extensive example usage of LS-SPA can be found in 
+this [notebook](./shapley_toy.ipynb).
 
