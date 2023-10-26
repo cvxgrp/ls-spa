@@ -1,7 +1,7 @@
 # Least-Squares Shapley Performance Attribution (LS-SPA)
 
 Library companion to the paper [Efficient Shapley Performance Attribution for Least-Squares
-Regression](https://web.stanford.edu/~boyd/papers/pdf/ls_shapley_perf.pdf) by Logan Bell, 
+Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell, 
 Nikhil Devanathan, and Stephen Boyd.
 
 ## Installation
