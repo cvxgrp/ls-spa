@@ -24,6 +24,7 @@ to the top of your python file.
 - `scipy`
 - `pandas`
 - `jax`
+
 Optional dependencies are
 - `matplotlib` for plotting
 - `jupyter-notebook` for using the demo notebook
@@ -47,7 +48,7 @@ S = np.array(ls_spa(X, X_tst, y, y_tst).attribution
 `S` will be a JAX vector containing the Shapley values of your features.
 
 
-## Example notebokk
+## Example notebook
 
 An example usage of LS-SPA can be found in this [notebook](./shapley_toy.ipynb).
 
