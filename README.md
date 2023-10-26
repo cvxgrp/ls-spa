@@ -52,7 +52,7 @@ S = np.array(ls_spa(X, X_tst, y, y_tst).attribution
 
 We present a complete Python script that utilizes LS-SPA to compute
 the Shapley attribution on the data from the toy example described 
-in the LS-SPA paper.
+in the companion paper.
 
 ```
 # Imports
@@ -72,8 +72,41 @@ S = np.array(ls_spa(X_train, X_test, y_train, y_test).attribution
 print("LS-SPA Shapley attribution: {}".format(S))
 ```
 
+This simple example uses the data included in the data directory of this
+repository.
+
+## Advanced usage
+
+The `ls_spa` function computes Shapley values for the given data using
+the LS-SPA method described in the companion paper. It takes arguments:
+
+- `X_train`: Training feature matrix.
+- `X_test`: Testing feature matrix.
+- `y_train`: Training response vector.
+- `y_test`: Testing response vector.
+- `reg`: Regularization parameter (Default 0).
+- `method`: Permutation sampling method. Options include `'random'`, 
+  `'permutohedron'`, `'argsort'`, and `'exact'`. If `None`, `'argsort'` is used 
+  if the number of features is greater than 10; otherwise, `'exact'` is used.
+- `batch_size`: Number of permutations in each batch (Default `2**7`).
+- `num_batches`: Maximum number of batches (Default `2**7`).
+- `tolerance`: Convergence tolerance for the Shapley values (Default `1e-2`).
+- `seed`: Seed for random number generation (Default `42`).
+
+`ls_spa` returns a `ShapleyResults` object. The `ShapleyResults` object
+has the fields:
+- `attribution`: Array of Shapley values for each feature.
+- `attribution_history`: Array of Shapley values for each iteration. 
+  `None` if `return_history=False` in `LSSA` call.
+- `theta`: Array of regression coefficients.
+- `overall_error`: Mean absolute error of the Shapley values.
+- `error_history`: Array of mean absolute errors for each iteration. 
+  `None` if `return_history=False` in `LSSA` call.
+- `attribution_errors`: Array of absolute errors for each feature.
+- `r_squared`: R-squared statistic of the regression.
+
 ## Example notebook
 
-An more extensive example usage of LS-SPA can be found in 
+A more extensive example usage of LS-SPA can be found in 
 this [notebook](./shapley_toy.ipynb).
 
