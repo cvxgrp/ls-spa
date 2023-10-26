@@ -87,21 +87,22 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
            tolerance: float = 1e-2,
            seed: int = 42) -> ShapleyResults:
     """
-    Compute Shapley values for Least-Squares Shapley Performance Attribution (LS-SPA).
+    Compute Shapley values for the given data using
+    Least-Squares Shapley Performance Attribution (LS-SPA).
 
     Args:
         X_train: Training feature matrix.
         X_test: Testing feature matrix.
         y_train: Training response vector.
         y_test: Testing response vector.
-        reg: Regularization parameter.
+        reg: Regularization parameter (Default 0).
         method: Permutation sampling method. Options include 'random', 
             'permutohedron', 'argsort', and 'exact'. If None, 'argsort' is used 
             if the number of features is greater than 10; otherwise, 'exact' is used.
-        batch_size: Number of permutations in each batch.
-        num_batches: Maximum number of batches.
-        tolerance: Convergence tolerance for the Shapley values.
-        seed: Seed for random number generation.
+        batch_size: Number of permutations in each batch (Default 2**7).
+        num_batches: Maximum number of batches (Default 2**7).
+        tolerance: Convergence tolerance for the Shapley values (Default 1e-2).
+        seed: Seed for random number generation (Default 42).
 
     Returns:
         ShapleyResults: Calculated Shapley values and other results.
