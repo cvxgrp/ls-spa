@@ -104,6 +104,7 @@ repository.
 
 ## Example notebook
 
-A more extensive example usage of LS-SPA can be found in 
-this [notebook](./shapley_toy.ipynb).
-
+In this [notebook](./shapley_toy.ipynb), we walk through the process of 
+computing Shapley values on the data for the toy example in the 
+companion paper. We then use `ls_spa` to compute the Shapley attribution
+on the same data.
