@@ -35,6 +35,27 @@ class ShapleyResults:
     attribution_errors: jnp.ndarray
     r_squared: float
 
+    def __repr__(self):
+        """Makes printing the dataclass look nice."""
+        attr_str = "(" + "".join("{:.2f}, ".format(a) for a in self.attribution.flatten())[:-2] + ")"
+        coefs_str = "(" + "".join("{:.2f}, ".format(c) for c in self.theta.flatten())[:-2] + ")"
+
+        return """
+        p = {}
+        Out-of-sample R^2 with all features: {:.2f}
+
+        Shapley attribution: {}
+        Estimated error in Shapley attribution: {:.2E}
+
+        Fitted coeficients with all features: {}
+        """.format(
+            len(self.attribution.flatten()), 
+            self.r_squared,
+            attr_str, 
+            self.overall_error, 
+            coefs_str
+        )
+
 
 class SizeIncompatible(Exception):
     """Custom exception for incompatible data sizes."""
