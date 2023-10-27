@@ -43,8 +43,8 @@ to correctly install JAX.
 We assume that you have imported `ls_spa` and you have a $N\times p$
 matrix of training data `X_train`, a $M\times p$ matrix of testing data `X_test`,
 a $N$ vector of training labels `y_train`, and a $M$ vector of testing labels `y_test`
-for positive integers $p, N, M$. In this case, you can find the Shapley attribution 
-of the out-of-sample $R^2$ on your data by executing
+for positive integers $p, N, M$ with $N,M\geq p$. In this case, you can find the 
+Shapley attribution of the out-of-sample $R^2$ on your data by executing
 
 ```
 attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
