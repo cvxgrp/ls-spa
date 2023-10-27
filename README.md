@@ -67,10 +67,7 @@ import numpy as np
 from ls_spa import ls_spa
 
 # Data loading
-X_train = np.load("./data/X_train.npy")
-X_test = np.load("./data/X_test.npy")
-y_train = np.load("./data/y_train.npy")
-y_test = np.load("./data/y_test.npy")
+X_train, X_test, y_train, y_test = [np.load("./data/toy_data.npz")[key] for key in ["X_train","X_test","y_train","y_test"]]
 
 # Compute Shapley attribution with LS-SPA
 S = ls_spa(X_train, X_test, y_train, y_test).attribution
