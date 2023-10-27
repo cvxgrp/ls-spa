@@ -50,7 +50,7 @@ of the out-of-sample $R^2$ on your data by executing
 attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
 ```
 
-`S` will be a JAX vector containing the Shapley values of your features.
+`attrs` will be a JAX vector containing the Shapley values of your features.
 The `ls_spa` function computes Shapley values for the given data using
 the LS-SPA method described in the companion paper. It takes arguments:
 
