@@ -43,7 +43,7 @@ In this case, you can find the Shapley attribution of the test $R^2$ on your dat
 executing
 
 ```
-S = ls_spa(X_train, X_test, y_train, y_test).attribution
+attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
 ```
 
 `S` will be a JAX vector containing the Shapley values of your features.
@@ -70,10 +70,10 @@ from ls_spa import ls_spa
 X_train, X_test, y_train, y_test = [np.load("./data/toy_data.npz")[key] for key in ["X_train","X_test","y_train","y_test"]]
 
 # Compute Shapley attribution with LS-SPA
-S = ls_spa(X_train, X_test, y_train, y_test).attribution
+attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
 
 # Print attribution
-print("LS-SPA Shapley attribution: {}".format(S))
+print("LS-SPA Shapley attribution: {}".format(attrs))
 ```
 
 This simple example uses the data included in the data directory of this
