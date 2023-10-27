@@ -74,14 +74,22 @@ from ls_spa import ls_spa
 X_train, X_test, y_train, y_test = [np.load("./data/toy_data.npz")[key] for key in ["X_train","X_test","y_train","y_test"]]
 
 # Compute Shapley attribution with LS-SPA
-attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
+results = ls_spa(X_train, X_test, y_train, y_test)
 
 # Print attribution
-print("LS-SPA Shapley attribution: {}".format(attrs))
+print(results)
 ```
+This simple example uses the data included in the data 
+directory of this repository.
 
-This simple example uses the data included in the data directory of this
-repository.
+The line `print(results)` prints a dashboard of information generated while
+computing the Shapley attribution such as the attribution, the $R^2$ of the
+model fitted with all of the features, the feature coeficients of the fitted 
+model, and an error estimate on the attribution (since LS-SPA is a method
+of estimation). 
+
+To extract just the vector of Shapley values, use `results.attribution`.
+For more info, see [optional arguments](#Optional-arguments).
 
 ## Example notebook
 
