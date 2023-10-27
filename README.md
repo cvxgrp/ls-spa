@@ -3,10 +3,10 @@
 ### [Installation](#Installation) - [Usage](#Usage) - [Hello world](#Hello-world) - [Example notebook](#Example-notebook) - [Optional arguments](#Optional-arguments)
 
 Library companion to the paper [Efficient Shapley Performance Attribution for Least-Squares
-Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell, 
+Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell,
 Nikhil Devanathan, and Stephen Boyd.
 
-This is a pre-release version of the code, and as such there may be significant tweaks and updates in the near future.
+This is a pre-release version of the code; significant tweaks and updates may occur in the near future.
 
 ## Installation
 
@@ -15,9 +15,8 @@ Instead, execute
 ```
 git clone https://github.com/cvxgrp/ls-shapley.git
 ```
-to clone this repository and download `ls_spa.py`. if you would like to use
-LS-SPA in a Python project, copy `ls_spa.py` to the directory of your python
-file and add 
+to clone this repository and obtain the `ls_spa.py` file. If you would like to use LS-SPA in a Python project, copy the `ls_spa.py` file to your project's
+directory and add
 ```
 from ls_spa import ls_spa
 ```
@@ -33,8 +32,8 @@ Optional dependencies are
 - `matplotlib` for plotting
 - `jupyter-notebook` for using the demo notebook
 
-`ls_spa` also requires [JAX](https://github.com/google/jax). 
-JAX installation varies by platform so please follow 
+`ls_spa` also requires [JAX](https://github.com/google/jax).
+JAX installation varies by platform so please follow
 [these instructions](https://github.com/google/jax#installation)
 to correctly install JAX.
 
@@ -43,7 +42,7 @@ to correctly install JAX.
 We assume that you have imported `ls_spa` and you have a $N\times p$
 matrix of training data `X_train`, a $M\times p$ matrix of testing data `X_test`,
 a $N$ vector of training labels `y_train`, and a $M$ vector of testing labels `y_test`
-for positive integers $p, N, M$ with $N,M\geq p$. In this case, you can find the 
+for positive integers $p, N, M$ with $N,M\geq p$. In this case, you can find the
 Shapley attribution of the out-of-sample $R^2$ on your data by executing
 
 ```
@@ -62,7 +61,7 @@ the LS-SPA method described in the companion paper. It takes arguments:
 ## Hello world
 
 We present a complete Python script that utilizes LS-SPA to compute
-the Shapley attribution on the data from the toy example described 
+the Shapley attribution on the data from the toy example described
 in the companion paper.
 
 ```
@@ -79,44 +78,45 @@ results = ls_spa(X_train, X_test, y_train, y_test)
 # Print attribution
 print(results)
 ```
-This simple example uses the data included in the data 
+This example uses data from the `data`
 directory of this repository.
 
 The line `print(results)` prints a dashboard of information generated while
 computing the Shapley attribution such as the attribution, the $R^2$ of the
-model fitted with all of the features, the feature coeficients of the fitted 
+model fitted with all of the features, the feature cofficients of the fitted
 model, and an error estimate on the attribution (since LS-SPA is a method
-of estimation). 
+of estimation).
 
 To extract just the vector of Shapley values, use `results.attribution`.
 For more info, see [optional arguments](#Optional-arguments).
 
 ## Example notebook
 
-In this [notebook](./shapley_toy.ipynb), we walk through the process of 
-computing Shapley values on the data for the toy example in the 
+In this [notebook](./shapley_toy.ipynb), we walk through the process of
+computing Shapley values on the data for the toy example in the
 companion paper. We then use `ls_spa` to compute the Shapley attribution
 on the same data.
 
 ## Optional arguments
 `ls_spa` takes the optional arguments:
-- `reg`: Regularization parameter (Default 0).
-- `method`: Permutation sampling method. Options include `'random'`, 
-  `'permutohedron'`, `'argsort'`, and `'exact'`. If `None`, `'argsort'` is used 
+- `reg`: Regularization parameter (Default `0`).
+- `method`: Permutation sampling method. Options include `'random'`,
+  `'permutohedron'`, `'argsort'`, and `'exact'`. If `None`, `'argsort'` is used
   if the number of features is greater than 10; otherwise, `'exact'` is used.
 - `batch_size`: Number of permutations in each batch (Default `2**7`).
 - `num_batches`: Maximum number of batches (Default `2**7`).
 - `tolerance`: Convergence tolerance for the Shapley values (Default `1e-2`).
 - `seed`: Seed for random number generation (Default `42`).
+- `return_history`: Flag to determine whether to return the history of error estimates and attributions for each feature chain (Default `False`).
 
 `ls_spa` returns a `ShapleyResults` object. The `ShapleyResults` object
 has the fields:
 - `attribution`: Array of Shapley values for each feature.
-- `attribution_history`: Array of Shapley values for each iteration. 
-  `None` if `return_history=False` in `LSSA` call.
+- `attribution_history`: Array of Shapley values for each iteration.
+  `None` if `return_history=False` in `ls_spa` call.
 - `theta`: Array of regression coefficients.
 - `overall_error`: Mean absolute error of the Shapley values.
-- `error_history`: Array of mean absolute errors for each iteration. 
-  `None` if `return_history=False` in `LSSA` call.
+- `error_history`: Array of mean absolute errors for each iteration.
+  `None` if `return_history=False` in `ls_spa` call.
 - `attribution_errors`: Array of absolute errors for each feature.
-- `r_squared`: R-squared statistic of the regression.
+- `r_squared`: Out-of-sample R-squared statistic of the regression.

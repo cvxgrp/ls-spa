@@ -18,11 +18,11 @@ class ShapleyResults:
 
     Attributes:
         attribution: Array of Shapley values for each feature.
-        attribution_history: Array of Shapley values for each iteration. 
+        attribution_history: Array of Shapley values for each iteration.
             None if return_history=False in LSSA call.
         theta: Array of regression coefficients.
         overall_error: Mean absolute error of the Shapley values.
-        error_history: Array of mean absolute errors for each iteration. 
+        error_history: Array of mean absolute errors for each iteration.
             None if return_history=False in LSSA call.
         attribution_errors: Array of absolute errors for each feature.
         r_squared: R-squared statistic of the regression.
@@ -49,10 +49,10 @@ class ShapleyResults:
 
         Fitted coeficients with all features: {}
         """.format(
-            len(self.attribution.flatten()), 
+            len(self.attribution.flatten()),
             self.r_squared,
-            attr_str, 
-            self.overall_error, 
+            attr_str,
+            self.overall_error,
             coefs_str
         )
 
@@ -106,7 +106,8 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
            batch_size: int = 2 ** 7,
            num_batches: int = 2 ** 7,
            tolerance: float = 1e-2,
-           seed: int = 42) -> ShapleyResults:
+           seed: int = 42,
+           return_history: bool = False) -> ShapleyResults:
     """
     Compute Shapley values for the given data using
     Least-Squares Shapley Performance Attribution (LS-SPA).
@@ -117,13 +118,15 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
         y_train: Training response vector.
         y_test: Testing response vector.
         reg: Regularization parameter (Default 0).
-        method: Permutation sampling method. Options include 'random', 
-            'permutohedron', 'argsort', and 'exact'. If None, 'argsort' is used 
+        method: Permutation sampling method. Options include 'random',
+            'permutohedron', 'argsort', and 'exact'. If None, 'argsort' is used
             if the number of features is greater than 10; otherwise, 'exact' is used.
         batch_size: Number of permutations in each batch (Default 2**7).
         num_batches: Maximum number of batches (Default 2**7).
         tolerance: Convergence tolerance for the Shapley values (Default 1e-2).
         seed: Seed for random number generation (Default 42).
+        return_history: Flag to determine whether to return the history of
+            error estimates and attributions for each feature chain.
 
     Returns:
         ShapleyResults: Calculated Shapley values and other results.
@@ -156,7 +159,7 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
                        reg=reg,
                        max_num_batches=num_batches,
                        eps=tolerance,
-                       return_history=False)
+                       return_history=return_history)
 
 
 class Permutations(ABC):
@@ -336,7 +339,7 @@ class ArgsortPermutations(Permutations):
     def __init__(self, key, p: int):
         """
         Initialize an instance of ArgsortPermutations.
-        
+
         Args:
             key: A key used for generating random values.
             p (int): The number of items to permute.
@@ -402,7 +405,7 @@ class RiskEstimate:
     def __init__(self, key, batch_size: int, p: int):
         """
         Initialize the RiskEstimate object.
-        
+
         Args:
             key (jax.random.PRNGKey): The random number generator key.
             batch_size (int): The size of each batch of permutations.
@@ -424,11 +427,11 @@ class RiskEstimate:
     def __call__(self, batch: jnp.ndarray, curr_atts: jnp.ndarray) -> float:
         """
         Estimate the risk (error) of the current Shapley value calculations.
-        
+
         Args:
             batch (jnp.ndarray): Array of batches to calculate the risk.
             curr_atts (jnp.ndarray): Current attribute values.
-        
+
         Returns:
             float: The estimated risk (error).
         """
@@ -450,12 +453,12 @@ class RiskEstimate:
                      group: jnp.ndarray) -> jnp.ndarray:
         """
         Helper function for updating attribute values.
-        
+
         Args:
             i (int): The counter for number of batches of permutations processed.
             atts (jnp.ndarray): Array to store the mean of the attribute values for each batch of permutations.
             group (jnp.ndarray): The risk sample group.
-        
+
         Returns:
             jnp.ndarray: The updated attribute values.
         """
