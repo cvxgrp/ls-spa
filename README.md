@@ -11,7 +11,7 @@ This is a pre-release version of the code, and as such there may be significant 
 ## Installation
 
 This library is not yet packaged, so it cannot be installed with `pip`.
-Instead execute
+Instead, execute
 ```
 git clone https://github.com/cvxgrp/ls-shapley.git
 ```
@@ -21,7 +21,7 @@ file and add
 ```
 from ls_spa import ls_spa
 ```
-to the top of your python file.
+to the top of your Python file.
 
 `ls_spa` has the following dependencies:
 - `numpy`
