@@ -1,5 +1,7 @@
 # Least-Squares Shapley Performance Attribution (LS-SPA)
 
+[Installation](#Installation) [Usage](#Usage) [Hello world](#Hello-world) [Example notebook](#Example-notebook) [Optional arguments](#Optional-arguments)
+
 Library companion to the paper [Efficient Shapley Performance Attribution for Least-Squares
 Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell, 
 Nikhil Devanathan, and Stephen Boyd.
