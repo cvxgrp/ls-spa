@@ -6,11 +6,11 @@ Library companion to the paper [Efficient Shapley Performance Attribution for Le
 Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell, 
 Nikhil Devanathan, and Stephen Boyd.
 
-This is a very early version of the code, and as such there may be significant tweaks and updates in the near future.
+This is a pre-release version of the code, and as such there may be significant tweaks and updates in the near future.
 
 ## Installation
 
-This library is not on PyPI, so it cannot be installed with `pip`.
+This library is not yet packaged, so it cannot be installed with `pip`.
 Instead execute
 ```
 git clone https://github.com/cvxgrp/ls-shapley.git
