@@ -43,7 +43,7 @@ In this case, you can find the Shapley attribution of the test $R^2$ on your dat
 executing
 
 ```
-S = ls_spa(X, X_tst, y, y_tst).attribution
+S = ls_spa(X_train, X_test, y_train, y_test).attribution
 ```
 
 `S` will be a JAX vector containing the Shapley values of your features.
