@@ -1,5 +1,7 @@
 # Least-Squares Shapley Performance Attribution (LS-SPA)
 
+## [Installation](#Installation) - [Usage](#Usage) - [Hello world](#Hello-world) - [Example notebook](#Example-notebook) - [Optional arguments](#Optional-arguments)
+
 Library companion to the paper [Efficient Shapley Performance Attribution for Least-Squares
 Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell, 
 Nikhil Devanathan, and Stephen Boyd.
@@ -43,7 +45,7 @@ In this case, you can find the Shapley attribution of the test $R^2$ on your dat
 executing
 
 ```
-S = np.array(ls_spa(X, X_tst, y, y_tst).attribution
+attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
 ```
 
 `S` will be a JAX vector containing the Shapley values of your features.
@@ -54,6 +56,40 @@ the LS-SPA method described in the companion paper. It takes arguments:
 - `X_test`: Testing feature matrix.
 - `y_train`: Training response vector.
 - `y_test`: Testing response vector.
+
+## Hello world
+
+We present a complete Python script that utilizes LS-SPA to compute
+the Shapley attribution on the data from the toy example described 
+in the companion paper.
+
+```
+# Imports
+import numpy as np
+from ls_spa import ls_spa
+
+# Data loading
+X_train, X_test, y_train, y_test = [np.load("./data/toy_data.npz")[key] for key in ["X_train","X_test","y_train","y_test"]]
+
+# Compute Shapley attribution with LS-SPA
+attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
+
+# Print attribution
+print("LS-SPA Shapley attribution: {}".format(attrs))
+```
+
+This simple example uses the data included in the data directory of this
+repository.
+
+## Example notebook
+
+In this [notebook](./shapley_toy.ipynb), we walk through the process of 
+computing Shapley values on the data for the toy example in the 
+companion paper. We then use `ls_spa` to compute the Shapley attribution
+on the same data.
+
+## Optional arguments
+`ls_spa` takes the optional arguments:
 - `reg`: Regularization parameter (Default 0).
 - `method`: Permutation sampling method. Options include `'random'`, 
   `'permutohedron'`, `'argsort'`, and `'exact'`. If `None`, `'argsort'` is used 
@@ -74,36 +110,3 @@ has the fields:
   `None` if `return_history=False` in `LSSA` call.
 - `attribution_errors`: Array of absolute errors for each feature.
 - `r_squared`: R-squared statistic of the regression.
-
-## Hello world
-
-We present a complete Python script that utilizes LS-SPA to compute
-the Shapley attribution on the data from the toy example described 
-in the companion paper.
-
-```
-# Imports
-import numpy as np
-from ls_spa import ls_spa
-
-# Data loading
-X_train = np.load("./data/X_train.npy")
-X_test = np.load("./data/X_test.npy")
-y_train = np.load("./data/y_train.npy")
-y_test = np.load("./data/y_test.npy")
-
-# Compute Shapley attribution with LS-SPA
-S = np.array(ls_spa(X_train, X_test, y_train, y_test).attribution
-
-# Print attribution
-print("LS-SPA Shapley attribution: {}".format(S))
-```
-
-This simple example uses the data included in the data directory of this
-repository.
-
-## Example notebook
-
-A more extensive example usage of LS-SPA can be found in 
-this [notebook](./shapley_toy.ipynb).
-
