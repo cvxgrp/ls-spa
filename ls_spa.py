@@ -106,8 +106,7 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
            batch_size: int = 2 ** 7,
            num_batches: int = 2 ** 7,
            tolerance: float = 1e-2,
-           seed: int = 42,
-           return_history: bool = False) -> ShapleyResults:
+           seed: int = 42) -> ShapleyResults:
     """
     Compute Shapley values for the given data using
     Least-Squares Shapley Performance Attribution (LS-SPA).
@@ -125,8 +124,6 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
         num_batches: Maximum number of batches (Default 2**7).
         tolerance: Convergence tolerance for the Shapley values (Default 1e-2).
         seed: Seed for random number generation (Default 42).
-        return_history: Flag to determine whether to return the history of
-            error estimates and attributions for each feature chain.
 
     Returns:
         ShapleyResults: Calculated Shapley values and other results.
@@ -159,7 +156,7 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
                        reg=reg,
                        max_num_batches=num_batches,
                        eps=tolerance,
-                       return_history=return_history)
+                       return_history=False)
 
 
 class Permutations(ABC):
@@ -414,62 +411,71 @@ class RiskEstimate:
         self.key = key
         self.batch_size = batch_size
         self.p = p
-        self.atts = jnp.zeros((500, self.p))
+        self.mean = jnp.zeros((self.p,))
+        self.cov = jnp.zeros((self.p, self.p))
         self._i = 1
 
-        def risk_sample(batch, subsamplekey):
-            # Helper function for estimating risk
-            group = random.choice(subsamplekey, batch,
-                                  shape=(batch_size//2, 1), axis=0)
-            return jnp.mean(group, axis=0)
-        self.risk_sample = jit(vmap(risk_sample, (None, 0), 0))
+        def risk_sample(key, cov):
+            sample_diffs = random.multivariate_normal(key, jnp.zeros(p),
+                                                      cov, shape=((1000,)),
+                                                      method='svd')
+            abs_diffs = jnp.abs(sample_diffs)
+            norms = jnp.linalg.norm(sample_diffs, axis=1)
+            abs_quantile = jnp.quantile(abs_diffs, 0.95, axis=0)
+            norms_quantile = jnp.quantile(norms, 0.95)
+            return abs_quantile, norms_quantile
 
-    def __call__(self, batch: jnp.ndarray, curr_atts: jnp.ndarray) -> float:
+        self.risk_sample = jit(risk_sample)
+
+    def __call__(self, batch: jnp.ndarray) -> float:
         """
         Estimate the risk (error) of the current Shapley value calculations.
 
         Args:
             batch (jnp.ndarray): Array of batches to calculate the risk.
-            curr_atts (jnp.ndarray): Current attribute values.
 
         Returns:
             float: The estimated risk (error).
         """
-        keys = random.split(self.key, 501)
-        self.key, subsamplekeys = keys[0], keys[1:]
-        group = self.risk_sample(batch, subsamplekeys)
-        self.atts = self._call_helper(
-            self._i, self.atts, group
-        )
-        diffs = self.atts - jnp.expand_dims(curr_atts, 0)
-        errs = jnp.mean(jnp.abs(diffs), axis=0)
-        global_error = jnp.mean(jnp.linalg.norm(diffs, axis=1))
+        self.key, samplekey = random.split(self.key)
+        self.mean, self.cov = self._call_helper(self._i, self.mean,
+                                                self.cov, batch)
+        num_pts = self.batch_size * self._i
+        unbiased_cov = num_pts / (num_pts - 1) * self.cov
+        feature_err, global_err = self.risk_sample(samplekey,
+                                                   unbiased_cov/num_pts)
         self._i += 1
-        return errs, global_error
+        return feature_err, global_err
 
     @staticmethod
     @jit
-    def _call_helper(i: int, atts: jnp.ndarray,
-                     group: jnp.ndarray) -> jnp.ndarray:
+    def _call_helper(i: int, mean: jnp.ndarray, cov: jnp.ndarray,
+                     batch: jnp.ndarray) -> jnp.ndarray:
         """
         Helper function for updating attribute values.
 
         Args:
             i (int): The counter for number of batches of permutations processed.
             atts (jnp.ndarray): Array to store the mean of the attribute values for each batch of permutations.
-            group (jnp.ndarray): The risk sample group.
 
         Returns:
             jnp.ndarray: The updated attribute values.
         """
-        atts = (i - 1) / i * atts + group / i
-        return atts
+        batch_mean = jnp.mean(batch, axis=0)
+        batch_cov = jnp.cov(batch.T, bias=True)
+
+        mean_diff = mean - batch_mean
+        correction_term = (i-1) / i**2 * jnp.outer(mean_diff, mean_diff)
+        new_mean = (i-1) / i * mean + batch_mean / i
+        new_cov = (i-1) / i * cov + batch_cov / i + correction_term
+        return new_mean, new_cov
 
     def reset(self):
         """
         Reset the risk estimator by setting the attribute values to zeros and counter to 1.
         """
-        self.atts = jnp.zeros((500, self.p))
+        self.mean = jnp.zeros((self.p,))
+        self.cov = jnp.zeros((self.p, self.p))
         self._i = 1
 
 
@@ -618,6 +624,7 @@ class LSSA:
                  y_train: jnp.ndarray, y_test: jnp.ndarray,
                  reg: float, max_num_batches: int = 1,
                  eps: float = 1e-3, y_norm_sq: jnp.ndarray | None = None,
+                 y_test_proj: jnp.ndarray | None = None,
                  return_history: bool = True) -> ShapleyResults:
         """
         Calculates Shapley values.
@@ -642,6 +649,9 @@ class LSSA:
             X_train, X_test, y_train, y_test, y_norm_sq, y_test_proj = (
                 self.process_data(N, M, X_train, X_test, y_train, y_test, reg))
         theta = jnp.linalg.lstsq(X_train, y_train)[0]
+        # XXX we need to correct the r-squared computation if cholesky method
+        # is done. the attributions add up to the right r-squared so maybe we
+        # just return that always
         r_squared = 1 - (
             jnp.linalg.norm(X_test @ theta - y_test) ** 2
             + y_norm_sq - jnp.linalg.norm(y_test_proj)**2)/y_norm_sq
@@ -656,7 +666,7 @@ class LSSA:
             perm_scores = self._square_shapley(X_train, X_test, y_train,
                                                y_test, y_norm_sq, batch)
             scores = (i-1)/i * scores + jnp.mean(perm_scores, axis=0) / i
-            feature_risk, global_risk = self.risk_estimate(perm_scores, scores)
+            feature_risk, global_risk = self.risk_estimate(perm_scores)
             if return_history:
                 attribution_history = jnp.vstack((attribution_history,
                                                   perm_scores))
