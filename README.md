@@ -10,13 +10,15 @@ This is a pre-release version of the code; significant tweaks and updates may oc
 
 ## Installation
 
-This library is not yet packaged, so it cannot be installed with `pip`.
-Instead, execute
+To install this package, execute
 ```
-git clone https://github.com/cvxgrp/ls-shapley.git
+pip install git+https://github.com/cvxgrp/ls-spa
 ```
-to clone this repository and obtain the `ls_spa.py` file. If you would like to use LS-SPA in a Python project, copy the `ls_spa.py` file to your project's
-directory and add
+and also install [JAX](https://github.com/google/jax). JAX is a dependency of `ls_spa`, but its 
+installation varies by platform (do not try to blindly `pip install jax`. 
+Follow [these instructions](https://github.com/google/jax#installation) to correctly install JAX.
+
+Import `ls_spa` by adding
 ```
 from ls_spa import ls_spa
 ```
@@ -31,11 +33,6 @@ to the top of your Python file.
 Optional dependencies are
 - `matplotlib` for plotting
 - `jupyter-notebook` for using the demo notebook
-
-`ls_spa` also requires [JAX](https://github.com/google/jax).
-JAX installation varies by platform so please follow
-[these instructions](https://github.com/google/jax#installation)
-to correctly install JAX.
 
 ## Usage
 
