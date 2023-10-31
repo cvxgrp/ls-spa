@@ -81,10 +81,10 @@ def gen_data(key):
 
 if __name__ == "__main__":
     key, gt_key, mc_key, ph_key, as_key = random.split(key, 5)
-    gt_lssa = ls_spa.LSSA(gt_key, p, 'argsort', BATCH_SIZE_GT)
-    mc_lssa = ls_spa.LSSA(mc_key, p, batch_size=BATCH_SIZE_EXP)
-    ph_lssa = ls_spa.LSSA(ph_key, p, 'permutohedron', BATCH_SIZE_EXP)
-    as_lssa = ls_spa.LSSA(as_key, p, 'argsort', BATCH_SIZE_EXP)
+    gt_lssa = ls_spa.LSSPA(gt_key, p, 'argsort', BATCH_SIZE_GT)
+    mc_lssa = ls_spa.LSSPA(mc_key, p, batch_size=BATCH_SIZE_EXP)
+    ph_lssa = ls_spa.LSSPA(ph_key, p, 'permutohedron', BATCH_SIZE_EXP)
+    as_lssa = ls_spa.LSSPA(as_key, p, 'argsort', BATCH_SIZE_EXP)
 
     key, datakey = random.split(key)
     X_train, X_test, y_train, y_test, true_theta = gen_data(datakey)

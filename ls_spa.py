@@ -144,7 +144,7 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
             method = 'argsort' ### XXX exact needs to be implemented still
 
     rng = random.PRNGKey(seed)
-    compute_spa = LSSA(key=rng,
+    compute_spa = LSSPA(key=rng,
                        p=p,
                        sample_method=method,
                        batch_size=batch_size)
@@ -575,7 +575,7 @@ class SquareShapley:
         self.square_shapley = jit(vmap_square_shapley)
 
 
-class LSSA:
+class LSSPA:
     """
     Class for calculating Shapley values for a least squares problem.
 
