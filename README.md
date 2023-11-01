@@ -117,3 +117,19 @@ has the fields:
   `None` if `return_history=False` in `ls_spa` call.
 - `attribution_errors`: Array of absolute errors for each feature.
 - `r_squared`: Out-of-sample R-squared statistic of the regression.
+
+## Citing
+
+If you use this code for research, please cite the associated paper.
+```
+@misc{https://doi.org/10.48550/arxiv.2310.19245,
+  doi = {10.48550/ARXIV.2310.19245},
+  url = {https://arxiv.org/abs/2310.19245},
+  author = {Bell,  Logan and Devanathan,  Nikhil and Boyd,  Stephen},
+  keywords = {Computation (stat.CO),  FOS: Computer and information sciences,  FOS: Computer and information sciences,  62-08 (Primary),  62-04,  62J99 (Secondary)},
+  title = {Efficient Shapley Performance Attribution for Least-Squares Regression},
+  publisher = {arXiv},
+  year = {2023},
+  copyright = {arXiv.org perpetual,  non-exclusive license}
+}
+```
