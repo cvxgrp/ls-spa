@@ -136,7 +136,7 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
         X_test (np.ndarray | jnp.ndarray | pd.DataFrame): _description_
         y_train (np.ndarray | jnp.ndarray | pd.Series): _description_
         y_test (np.ndarray | jnp.ndarray | pd.Series): _description_
-        reg (float, optional): _description_. Defaults to 0..
+        reg (float, optional): _description_. Defaults to 0.
         method (SampleMethod | None, optional): _description_. Defaults to None.
         batch_size (int, optional): _description_. Defaults to 2**7.
         num_batches (int, optional): _description_. Defaults to 2**7.
