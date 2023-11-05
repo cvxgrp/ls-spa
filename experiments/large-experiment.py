@@ -115,14 +115,13 @@ def gen_data(key):
     y_norm_sq = gram_test[-1, -1]
     R_train = jsp.linalg.cholesky(gram_train)
     R_test = jsp.linalg.cholesky(gram_test)
-    y_test_proj = y_norm_sq - R_test[-1, -1]**2
     X_train, y_train = R_train[:-1, :-1], R_train[:-1, -1]
     X_test, y_test = R_test[:-1, :-1], R_test[:-1, -1]
     end_gramgen = time.time()
     print(f"Condition Number of gram_train is {jnp.linalg.cond(gram_train)}")
     print(f"Condition Number of gram_test is {jnp.linalg.cond(gram_test)}")
     qr_time = end_gramgen - 2*start_gramgen + start_datagen
-    return X_train, X_test, y_train, y_test, theta_true, y_norm_sq, qr_time, y_test_proj
+    return X_train, X_test, y_train, y_test, theta_true, y_norm_sq, qr_time
 
 
 if __name__ == "__main__":
@@ -130,7 +129,7 @@ if __name__ == "__main__":
     key, gt_key, datakey = random.split(key, 3)
     gt_lssa = ls_spa.LSSPA(gt_key, p, 'argsort', BATCH_SIZE)
 
-    X_train, X_test, y_train, y_test, true_theta, y_norm_sq, qr_time, y_test_proj = (
+    X_train, X_test, y_train, y_test, true_theta, y_norm_sq, qr_time = (
         gen_data(datakey))
 
     if jnp.any(jnp.isnan(X_train)) or jnp.any(jnp.isnan(X_test)):
@@ -139,7 +138,6 @@ if __name__ == "__main__":
         start = time.time()
         gt_results = gt_lssa(X_train, X_test, y_train, y_test, 0.,
                             NUM_BATCHES, eps=1e-2, y_norm_sq=y_norm_sq,
-                            y_test_proj=y_test_proj,
                             return_history=False)
         end = time.time()
         print(f"Initial QR Time: {qr_time}")

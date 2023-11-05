@@ -1,3 +1,26 @@
+# Copyright 2023 Logan Bell, Nikhil Devanathan, and Stephen Boyd
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""This modeule contains a method to efficiently estimate a Shapley 
+attribution for least squares problems.
+
+Leave one blank line.  The rest of this docstring should contain an
+overall description of the module or program.  Optionally, it may also
+contain a brief description of exported classes and functions and/or usage
+examples.
+"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
@@ -14,18 +37,16 @@ SampleMethod = Literal['random', 'permutohedron', 'argsort', 'exact']
 
 @dataclass
 class ShapleyResults:
-    """Data class to store the results of the Shapley procedure.
+    """_summary_
 
     Attributes:
-        attribution: Array of Shapley values for each feature.
-        attribution_history: Array of Shapley values for each iteration.
-            None if return_history=False in LSSA call.
-        theta: Array of regression coefficients.
-        overall_error: Mean absolute error of the Shapley values.
-        error_history: Array of mean absolute errors for each iteration.
-            None if return_history=False in LSSA call.
-        attribution_errors: Array of absolute errors for each feature.
-        r_squared: R-squared statistic of the regression.
+        attribution (jnp.ndarray): _description_
+        attribution_history (jnp.ndarray | None): _description_
+        theta (jnp.ndarray): _description_
+        overall_error (float): _description_
+        error_history (jnp.ndarray | None): _description_
+        attribution_errors (jnp.ndarray): _description_
+        r_squared (float): _description_
     """
     attribution: jnp.ndarray
     attribution_history: jnp.ndarray | None
@@ -37,6 +58,7 @@ class ShapleyResults:
 
     def __repr__(self):
         """Makes printing the dataclass look nice."""
+
         attr_str = "(" + "".join("{:.2f}, ".format(a) for a in self.attribution.flatten())[:-2] + ")"
         coefs_str = "(" + "".join("{:.2f}, ".format(c) for c in self.theta.flatten())[:-2] + ")"
 
@@ -68,16 +90,16 @@ def validate_data(X_train: jnp.ndarray,
                   X_test: jnp.ndarray,
                   y_train: jnp.ndarray,
                   y_test: jnp.ndarray):
-    """Validate data dimensions.
+    """_summary_
 
     Args:
-        X_train: Training feature matrix.
-        X_test: Testing feature matrix.
-        y_train: Training response vector.
-        y_test: Testing response vector.
+        X_train (jnp.ndarray): _description_
+        X_test (jnp.ndarray): _description_
+        y_train (jnp.ndarray): _description_
+        y_test (jnp.ndarray): _description_
 
     Raises:
-        SizeIncompatible: If data dimensions are incompatible.
+        SizeIncompatible: _description_
     """
     if X_train.shape[1] != X_test.shape[1]:
         raise SizeIncompatible("X_train and X_test should have the "
@@ -107,26 +129,22 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
            num_batches: int = 2 ** 7,
            tolerance: float = 1e-2,
            seed: int = 42) -> ShapleyResults:
-    """
-    Compute Shapley values for the given data using
-    Least-Squares Shapley Performance Attribution (LS-SPA).
+    """_summary_
 
     Args:
-        X_train: Training feature matrix.
-        X_test: Testing feature matrix.
-        y_train: Training response vector.
-        y_test: Testing response vector.
-        reg: Regularization parameter (Default 0).
-        method: Permutation sampling method. Options include 'random',
-            'permutohedron', 'argsort', and 'exact'. If None, 'argsort' is used
-            if the number of features is greater than 10; otherwise, 'exact' is used.
-        batch_size: Number of permutations in each batch (Default 2**7).
-        num_batches: Maximum number of batches (Default 2**7).
-        tolerance: Convergence tolerance for the Shapley values (Default 1e-2).
-        seed: Seed for random number generation (Default 42).
+        X_train (np.ndarray | jnp.ndarray | pd.DataFrame): _description_
+        X_test (np.ndarray | jnp.ndarray | pd.DataFrame): _description_
+        y_train (np.ndarray | jnp.ndarray | pd.Series): _description_
+        y_test (np.ndarray | jnp.ndarray | pd.Series): _description_
+        reg (float, optional): _description_. Defaults to 0..
+        method (SampleMethod | None, optional): _description_. Defaults to None.
+        batch_size (int, optional): _description_. Defaults to 2**7.
+        num_batches (int, optional): _description_. Defaults to 2**7.
+        tolerance (float, optional): _description_. Defaults to 1e-2.
+        seed (int, optional): _description_. Defaults to 42.
 
     Returns:
-        ShapleyResults: Calculated Shapley values and other results.
+        ShapleyResults: _description_
     """
     # Converting data into JAX arrays.
     X_train = jnp.array(X_train)
@@ -160,81 +178,70 @@ def ls_spa(X_train: np.ndarray | jnp.ndarray | pd.DataFrame,
 
 
 class Permutations(ABC):
-    """
-    Base class for permutation generators. Subclasses must implement the __call__ method.
+    """_summary_
 
     Attributes:
-        key (jax.random.PRNGKey): The random number generator key.
-        p (int): The dimension of the problem.
-
-    Methods:
-        __call__(num_perms: int) -> jnp.ndarray: Abstract method to generate permutations.
+        key (_type_): _description_
+        p (_type_): _description_
     """
 
     def __init__(self, key, p: int):
-        """
-        Initialize a new instance of permutation generator.
+        """_summary_
 
         Args:
-            key (jax.random.PRNGKey): The random number generator key.
-            p (int): The dimension of the problem.
+            key (_type_): _description_
+            p (int): _description_
         """
         self.key = key
         self.p = p
 
     @abstractmethod
     def __call__(self, num_perms: int) -> jnp.ndarray:
-        """
-        Abstract method to generate permutations. Must be implemented by subclasses.
+        """_summary_
 
         Args:
-            num_perms (int): The number of permutations to generate.
+            num_perms (int): _description_
 
         Returns:
-            jnp.ndarray: The generated permutations.
+            jnp.ndarray: _description_
         """
         pass
 
     @property
     def p(self):
-        """
-        Get the dimension of the problem.
+        """_summary_
 
         Returns:
-            int: The dimension of the problem.
+            _type_: _description_
         """
         return self._p
 
     @p.setter
     def p(self, new_p: int):
-        """
-        Set a new dimension for the problem.
+        """_summary_
 
         Args:
-            new_p (int): The new dimension of the problem.
+            new_p (int): _description_
         """
         self._p = new_p
 
 
 class RandomPermutations(Permutations):
-    """
-    Class for generating random permutations.
+    """_summary_
 
-    Inherits from Permutations.
-
-    Methods:
-        __call__(num_perms: int) -> jnp.ndarray: Generate random permutations.
+    Attributes:
+        key (_type_): _description_
+        p (_type_): _description_
     """
 
     def __call__(self, num_perms: int) -> jnp.ndarray:
-        """
-        Generate a specified number of random permutations.
+        """_summary_
 
         Args:
-            num_perms (int): The number of permutations to generate.
+            num_perms (int): _description_
 
         Returns:
-            jnp.ndarray: An array containing the generated permutations. Each row represents a permutation.
+            jnp.ndarray: _description_
         """
         # Split the key to ensure different permutations each call
         self.key, keygenkey = random.split(self.key)
@@ -245,34 +252,32 @@ class RandomPermutations(Permutations):
 
 
 class PermutohedronPermutations(Permutations):
-    """
-    Class for generating permutations based on the permutohedron sampling method.
+    """_summary_
 
-    Inherits from Permutations.
-
-    Methods:
-        __call__(num_perms: int) -> jnp.ndarray: Generate permutations based on the permutohedron sampling method.
+    Attributes:
+        key (_type_): _description_
+        p (_type_): _description_
+        qmc (_type_): _description_
     """
+
     def __init__(self, key, p: int):
-        """
-        Initialize the PermutohedronPermutations object.
+        """_summary_
 
         Args:
-            key (type): Description of what key is.
-            p (int): Dimension of the permutohedron.
+            key (_type_): _description_
+            p (int): _description_
         """
         self.key = key
         self.p = p
 
     def __call__(self, num_perms: int) -> jnp.ndarray:
-        """
-        Generate permutations based on the permutohedron sampling method.
+        """_summary_
 
         Args:
-            num_perms (int): Number of permutations to generate.
+            num_perms (int): _description_
 
         Returns:
-            jnp.ndarray: Array of generated permutations.
+            jnp.ndarray: _description_
         """
         # Generate permutohedron samples
         samples = jnp.array(self.qmc.random(num_perms))
@@ -283,21 +288,19 @@ class PermutohedronPermutations(Permutations):
 
     @property
     def p(self):
-        """
-        Getter for p.
+        """_summary_
 
         Returns:
-            int: Dimension of the permutohedron.
+            _type_: _description_
         """
         return self._p
 
     @p.setter
     def p(self, new_p: int):
-        """
-        Setter for p.
+        """_summary_
 
         Args:
-            new_p (int): New dimension of the permutohedron.
+            new_p (int): _description_
         """
         self._p = new_p
         self.key, keygenkey = random.split(self.key)
@@ -307,14 +310,13 @@ class PermutohedronPermutations(Permutations):
 
     @partial(jit, static_argnums=0)
     def project(self, x: jnp.ndarray):
-        """
-        Project samples onto the permutohedron.
+        """_summary_
 
         Args:
-            x (jnp.ndarray): Array of samples.
+            x (jnp.ndarray): _description_
 
         Returns:
-            jnp.ndarray : Array of projected samples.
+            _type_: _description_
         """
         tril_part = jnp.tril(jnp.ones((self.p-1, self.p)))
         diag_part = jnp.diag(-jnp.arange(1, self.p), 1)[:-1]
@@ -324,36 +326,32 @@ class PermutohedronPermutations(Permutations):
 
 
 class ArgsortPermutations(Permutations):
-    """
-    Class for generating permutations based on the argsort sampling method.
+    """_summary_
 
-    Inherits from Permutations.
-
-    Methods:
-        __call__(num_perms: int) -> jnp.ndarray: Generate permutations based on the argsort sampling method.
+    Attributes:
+        key (_type_): _description_
+        p (_type_): _description_
+        qmc (_type_): _description_
     """
 
     def __init__(self, key, p: int):
-        """
-        Initialize an instance of ArgsortPermutations.
+        """_summary_
 
         Args:
-            key: A key used for generating random values.
-            p (int): The number of items to permute.
-
+            key (_type_): _description_
+            p (int): _description_
         """
         self.key = key
         self.p = p
 
     def __call__(self, num_perms: int) -> jnp.ndarray:
-        """
-        Generate permutations based on the argsort sampling method.
+        """_summary_
 
         Args:
-            num_perms (int): The number of permutations to generate.
+            num_perms (int): _description_
 
         Returns:
-            jnp.ndarray: A 2D array of argsort permutations.
+            jnp.ndarray: _description_
         """
         # Generate argsort samples
         samples = jnp.array(self.qmc.random(num_perms))
@@ -361,21 +359,19 @@ class ArgsortPermutations(Permutations):
 
     @property
     def p(self):
-        """
-        Getter for number of items to permute.
+        """_summary_
 
         Returns:
-            int: The number of items to permute.
+            _type_: _description_
         """
         return self._p
 
     @p.setter
     def p(self, new_p: int):
-        """
-        Setter for number of items to permute.
+        """_summary_
 
         Args:
-            new_p (int): The new number of items to permute.
+            new_p (int): _description_
         """
         self._p = new_p
         self.key, keygenkey = random.split(self.key)
@@ -384,29 +380,27 @@ class ArgsortPermutations(Permutations):
 
 
 class RiskEstimate:
-    """
-    Class for estimating the risk (error) of the Shapley value calculations.
+    """_summary_
 
     Attributes:
-        key (jax.random.PRNGKey): The random number generator key.
-        batch_size (int): The size of each batch of permutations.
-        p (int): The dimension of the problem.
-        atts (jnp.ndarray): Array to store the mean of the attribute values for each batch of permutations.
-        _i (int): Counter for number of batches of permutations processed.
-
-    Methods:
-        __call__(batch: jnp.ndarray, curr_atts: jnp.ndarray) -> float: Estimate the risk (error) of the current Shapley value calculations.
-        reset(): Reset the risk estimator.
+        key (_type_): _description_
+        batch_size (int): _description_
+        p (int): _description_
+        mean (jnp.ndarray): _description_
+        cov (jnp.ndarray): _description_
+        _i (int): _description_
     """
 
     def __init__(self, key, batch_size: int, p: int):
-        """
-        Initialize the RiskEstimate object.
+        """_summary_
 
         Args:
-            key (jax.random.PRNGKey): The random number generator key.
-            batch_size (int): The size of each batch of permutations.
-            p (int): The dimension of the problem.
+            key (_type_): _description_
+            batch_size (int): _description_
+            p (int): _description_
+
+        Returns:
+            _type_: _description_
         """
         self.key = key
         self.batch_size = batch_size
@@ -416,6 +410,15 @@ class RiskEstimate:
         self._i = 1
 
         def risk_sample(key, cov):
+            """_summary_
+
+            Args:
+                key (_type_): _description_
+                cov (_type_): _description_
+
+            Returns:
+                _type_: _description_
+            """
             sample_diffs = random.multivariate_normal(key, jnp.zeros(p),
                                                       cov, shape=((1000,)),
                                                       method='svd')
@@ -428,14 +431,13 @@ class RiskEstimate:
         self.risk_sample = jit(risk_sample)
 
     def __call__(self, batch: jnp.ndarray) -> float:
-        """
-        Estimate the risk (error) of the current Shapley value calculations.
+        """_summary_
 
         Args:
-            batch (jnp.ndarray): Array of batches to calculate the risk.
+            batch (jnp.ndarray): _description_
 
         Returns:
-            float: The estimated risk (error).
+            float: _description_
         """
         self.key, samplekey = random.split(self.key)
         self.mean, self.cov = self._call_helper(self._i, self.mean,
@@ -451,15 +453,16 @@ class RiskEstimate:
     @jit
     def _call_helper(i: int, mean: jnp.ndarray, cov: jnp.ndarray,
                      batch: jnp.ndarray) -> jnp.ndarray:
-        """
-        Helper function for updating attribute values.
+        """_summary_
 
         Args:
-            i (int): The counter for number of batches of permutations processed.
-            atts (jnp.ndarray): Array to store the mean of the attribute values for each batch of permutations.
+            i (int): _description_
+            mean (jnp.ndarray): _description_
+            cov (jnp.ndarray): _description_
+            batch (jnp.ndarray): _description_
 
         Returns:
-            jnp.ndarray: The updated attribute values.
+            jnp.ndarray: _description_
         """
         batch_mean = jnp.mean(batch, axis=0)
         batch_cov = jnp.cov(batch.T, bias=True)
@@ -471,92 +474,70 @@ class RiskEstimate:
         return new_mean, new_cov
 
     def reset(self):
-        """
-        Reset the risk estimator by setting the attribute values to zeros and counter to 1.
-        """
+        """_summary_"""
         self.mean = jnp.zeros((self.p,))
         self.cov = jnp.zeros((self.p, self.p))
         self._i = 1
 
 
 class SquareShapley:
-    """
-    Class for calculating Shapley values for a least squares problem
-    with a square data matrix.
+    """_summary_
 
     Attributes:
-        p (int): The dimension of the problem.
-
-    Methods:
-        __call__(X_train: jnp.ndarray, X_test: jnp.ndarray, y_train: jnp.ndarray, y_test: jnp.ndarray, y_norm_sq: jnp.ndarray, perms: jnp.ndarray) -> jnp.ndarray: Calculate Shapley values.
+        p (int): _description_
     """
 
     def __init__(self, p: int):
-        """
-        Initialize the SquareShapley class.
+        """_summary_
 
         Args:
-            p (int): The dimension of the problem.
+            p (int): _description_
         """
         self.p = p
 
     def __call__(self, X_train: jnp.ndarray, X_test: jnp.ndarray,
                  y_train: jnp.ndarray, y_test: jnp.ndarray,
                  y_norm_sq: jnp.ndarray, perms: jnp.ndarray) -> jnp.ndarray:
-        """
-        Calculate Shapley values.
+        """_summary_
 
         Args:
-            X_train (jnp.ndarray): The training data.
-            X_test (jnp.ndarray): The test data.
-            y_train (jnp.ndarray): The training labels.
-            y_test (jnp.ndarray): The test labels.
-            y_norm_sq (jnp.ndarray): The square norm of the labels.
-            perms (jnp.ndarray): The permutations.
+            X_train (jnp.ndarray): _description_
+            X_test (jnp.ndarray): _description_
+            y_train (jnp.ndarray): _description_
+            y_test (jnp.ndarray): _description_
+            y_norm_sq (jnp.ndarray): _description_
+            perms (jnp.ndarray): _description_
 
         Returns:
-            jnp.ndarray: The calculated Shapley values.
+            jnp.ndarray: _description_
         """
         return self.square_shapley(X_train, X_test, y_train, y_test,
                                    y_norm_sq, perms)
 
     @property
     def p(self):
-        """
-        Get the dimension of the problem.
+        """_summary_
 
         Returns:
-            int: The dimension of the problem.
+            _type_: _description_
         """
         return self._p
 
     @p.setter
     def p(self, new_p: int):
-        """
-        Set the dimension of the problem.
+        """_summary_
 
         Args:
-            new_p (int): The new dimension of the problem.
+            new_p (int): _description_
+
+        Returns:
+            _type_: _description_
         """
         self._p = new_p
         def square_shapley(X_train: jnp.ndarray, X_test: jnp.ndarray,
                            y_train: jnp.ndarray, y_test: jnp.ndarray,
                            y_norm_sq: jnp.ndarray,
                            perms: jnp.ndarray) -> jnp.ndarray:
-            """
-            Helper function for calculating Shapley values.
-
-            Args:
-                X_train (jnp.ndarray): The features of the training data.
-                X_test (jnp.ndarray): The features of the test data.
-                y_train (jnp.ndarray): The target variable of the training data.
-                y_test (jnp.ndarray): The target variable of the test data.
-                y_norm_sq (jnp.ndarray): The square of the norm of the target variable of the test data.
-                perms (jnp.ndarray): The permutations of the indices of the feature space.
-
-            Returns:
-                perm_scores (jnp.ndarray): The Shapley values for each feature in the training dataset.
-            """
             Q, R = jnp.linalg.qr(X_train[:, perms])
             X = X_test[:, perms]
 
@@ -576,34 +557,28 @@ class SquareShapley:
 
 
 class LSSPA:
-    """
-    Class for calculating Shapley values for a least squares problem.
+    """_summary_
 
     Attributes:
-        _p (int): The dimension of the problem.
-        sample_method (SampleMethod): The method for generating permutations ('random', 'permutohedron', or 'argsort').
-        key (jax.random.PRNGKey): The random number generator key.
-        sampler (Permutations): The permutation generator.
-        batch_size (int): The size of each batch of permutations.
-        _square_shapley (SquareShapley): The Shapley value calculator.
-        risk_estimate (RiskEstimate): The risk estimator.
-
-    Methods:
-        __call__(X_train: jnp.ndarray, X_test: jnp.ndarray, y_train: jnp.ndarray, y_test: jnp.ndarray, reg: float, max_num_batches: int, eps: float, y_norm_sq: jnp.ndarray, return_history: bool) -> ShapleyResults: Calculate Shapley values.
-        process_data(N: int, M: int, X_train: jnp.ndarray, X_test: jnp.ndarray, y_train: jnp.ndarray, y_test: jnp.ndarray, reg: float) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]: Preprocess the data for Shapley value calculations.
+        p (int): _description_
+        sample_method (SampleMethod): _description_
+        batch_size (int): _description_
+        key (_type_): _description_
+        sampler (_type_): _description_
+        _square_shapley (_type_): _description_
+        risk_estimate (_type_): _description_
     """
 
     def __init__(self, key, p: int = 10,
                  sample_method: SampleMethod = 'random',
                  batch_size: int = 2**13):
-        """
-        Initializes the LSSA class with given parameters and sets up the appropriate permutation generator and Shapley value calculator.
+        """_summary_
 
         Args:
-            key: Random number generator key.
-            p (int, optional): The dimension of the problem. Default is 10.
-            sample_method (str, optional): The method for generating permutations. Options are 'random', 'permutohedron', or 'argsort'. Default is 'random'.
-            batch_size (int, optional): The size of each batch of permutations. Default is 2**13.
+            key (_type_): _description_
+            p (int, optional): _description_. Defaults to 10.
+            sample_method (SampleMethod, optional): _description_. Defaults to 'random'.
+            batch_size (int, optional): _description_. Defaults to 2**13.
         """
         self._p = p
         self.sample_method = sample_method
@@ -624,37 +599,34 @@ class LSSPA:
                  y_train: jnp.ndarray, y_test: jnp.ndarray,
                  reg: float, max_num_batches: int = 1,
                  eps: float = 1e-3, y_norm_sq: jnp.ndarray | None = None,
-                 y_test_proj: jnp.ndarray | None = None,
                  return_history: bool = True) -> ShapleyResults:
-        """
-        Calculates Shapley values.
+        """_summary_
 
         Args:
-            X_train (jnp.ndarray): Training data features.
-            X_test (jnp.ndarray): Testing data features.
-            y_train (jnp.ndarray): Training data labels.
-            y_test (jnp.ndarray): Testing data labels.
-            reg (float): Regularization parameter.
-            max_num_batches (int, optional): Maximum number of batches. Default is 1.
-            eps (float, optional): Error tolerance. Default is 1e-3.
-            y_norm_sq (jnp.ndarray, optional): Squared norm of y. If None, it will be calculated.
-            return_history (bool, optional): Whether to return the history of Shapley values. Default is True.
+            X_train (jnp.ndarray): _description_
+            X_test (jnp.ndarray): _description_
+            y_train (jnp.ndarray): _description_
+            y_test (jnp.ndarray): _description_
+            reg (float): _description_
+            max_num_batches (int, optional): _description_. Defaults to 1.
+            eps (float, optional): _description_. Defaults to 1e-3.
+            y_norm_sq (jnp.ndarray | None, optional): _description_. Defaults to None.
+            return_history (bool, optional): _description_. Defaults to True.
 
         Returns:
-            ShapleyResults: A data class containing Shapley values and other relevant information.
+            ShapleyResults: _description_
         """
         if y_norm_sq is None:
             N = 1 if np.isclose(reg, 0) else len(X_train)
             M = len(X_test)
-            X_train, X_test, y_train, y_test, y_norm_sq, y_test_proj = (
+            X_train, X_test, y_train, y_test, y_norm_sq, = (
                 self.process_data(N, M, X_train, X_test, y_train, y_test, reg))
         theta = jnp.linalg.lstsq(X_train, y_train)[0]
         # XXX we need to correct the r-squared computation if cholesky method
         # is done. the attributions add up to the right r-squared so maybe we
         # just return that always
-        r_squared = 1 - (
-            jnp.linalg.norm(X_test @ theta - y_test) ** 2
-            + y_norm_sq - jnp.linalg.norm(y_test_proj)**2)/y_norm_sq
+        r_squared = (np.linalg.norm(y_test) ** 2 - 
+                    np.linalg.norm(X_test @ theta - y_test) ** 2) / y_norm_sq
 
         attribution_history = jnp.zeros((0, self.p)) if return_history else None
         scores = jnp.zeros(self.p)
@@ -687,21 +659,19 @@ class LSSPA:
 
     @property
     def p(self):
-        """
-        Get the dimension of the problem.
+        """_summary_
 
         Returns:
-            int: The dimension of the problem.
+            _type_: _description_
         """
         return self._p
 
     @p.setter
     def p(self, new_p: int):
-        """
-        Set the dimension of the problem.
+        """_summary_
 
         Args:
-            new_p (int): The new dimension of the problem.
+            new_p (int): _description_
         """
         if self.p == new_p:
             return
@@ -725,20 +695,19 @@ class LSSPA:
                      reg: float) -> Tuple[jnp.ndarray, jnp.ndarray,
                                           jnp.ndarray, jnp.ndarray,
                                           jnp.ndarray]:
-        """
-        Preprocesses the data for Shapley value calculations.
+        """_summary_
 
         Args:
-            N (int): Number of training samples.
-            M (int): Number of testing samples.
-            X_train (jnp.ndarray): Training data features.
-            X_test (jnp.ndarray): Testing data features.
-            y_train (jnp.ndarray): Training data labels.
-            y_test (jnp.ndarray): Testing data labels.
-            reg (float): Regularization parameter.
+            N (int): _description_
+            M (int): _description_
+            X_train (jnp.ndarray): _description_
+            X_test (jnp.ndarray): _description_
+            y_train (jnp.ndarray): _description_
+            y_test (jnp.ndarray): _description_
+            reg (float): _description_
 
         Returns:
-            Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]: Preprocessed data.
+            Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]: _description_
         """
         X_train = X_train / jnp.sqrt(N)
         X_train = jnp.vstack((X_train, jnp.sqrt(reg) * jnp.eye(self.p)))
@@ -750,5 +719,5 @@ class LSSPA:
         Q, X_train, = jnp.linalg.qr(X_train)
         Q_ts, X_test = jnp.linalg.qr(X_test)
         y_train = Q.T @ y_train
-        y_test, y_test_proj = Q_ts.T @ y_test, Q_ts @ (Q_ts.T @ y_test)
-        return X_train, X_test, y_train, y_test, y_norm_sq, y_test_proj
+        y_test = Q_ts.T @ y_test
+        return X_train, X_test, y_train, y_test, y_norm_sq
