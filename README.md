@@ -14,9 +14,10 @@ To install this package, execute
 ```
 pip install git+https://github.com/cvxgrp/ls-spa
 ```
-and also install [JAX](https://github.com/google/jax). JAX is a dependency of `ls_spa`, but its 
-installation varies by platform (do not try to blindly `pip install jax`). 
-Follow [these instructions](https://github.com/google/jax#installation) to correctly install JAX.
+This package also has an optional [JAX](https://github.com/google/jax) backend that offers
+signficantly improved performance for power users. JAX installation varies by platform 
+(do not try to blindly `pip install jax`). Follow 
+[these instructions](https://github.com/google/jax#installation) to correctly install JAX.
 
 Import `ls_spa` by adding
 ```
@@ -28,11 +29,11 @@ to the top of your Python file.
 - `numpy`
 - `scipy`
 - `pandas`
-- `jax`
 
 Optional dependencies are
-- `matplotlib` for plotting
-- `jupyter-notebook` for using the demo notebook
+- `jax` for extra performance
+- `altair` for plotting
+- `marimo` for using the demo notebook
 
 ## Usage
 
