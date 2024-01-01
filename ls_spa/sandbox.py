@@ -35,18 +35,20 @@ def __(attrs):
     from typing import Literal, Tuple
 
     import jax
+    import numpy as np
     import jax.numpy as jnp
     import jax.scipy as jsp
-    import numpy as np
+    import jax.lax as lax
+    import jax.ops as ops
     import scipy as sp
     from numpy import random
     import pandas as pd
     import itertools as it
 
+
     @dataclass
     class ShapleyResults:
         attribution: np.ndarray
-        attribution_history: np.ndarray | None
         theta: np.ndarray
         overall_error: float
         error_history: np.ndarray | None
@@ -57,7 +59,7 @@ def __(attrs):
             """Makes printing the dataclass look nice."""
             attrs_str = ""
             coefs_str = ""
-            
+
             if len(attrs) <= 5:
                 attr_str = "(" + "".join("{:.2f}, ".format(a) for a in self.attribution.flatten())[:-2] + ")"
                 coefs_str = "(" + "".join("{:.2f}, ".format(c) for c in self.theta.flatten())[:-2] + ")"
@@ -117,7 +119,8 @@ def __(attrs):
                y_train: np.ndarray | jnp.ndarray | pd.Series,
                y_test: np.ndarray | jnp.ndarray | pd.Series,
                reg: float = 0.,
-               num_iters: int = 2 ** 14,
+               num_batches: int = 2 ** 6,
+               batch_size: int = 2 ** 8,
                tolerance: float = 1e-2,
                seed: int = 42,
                perms: np.ndarray | None = None) -> ShapleyResults:
@@ -130,21 +133,17 @@ def __(attrs):
             y_train: The training labels.
             y_test: The test labels.
             reg: The regularization parameter.
-            batch_size: The number of samples to use in each batch.
-            num_batches: The number of batches to use.
+            num_batches: The number of batches of permutations to use.
+            batch_size: The size of each batch of permutations.
             tolerance: The tolerance for the stopping criterion.
             seed: The seed for the random number generator.
-            perms: The permutations to use. If None, the permutations are
-                generated randomly.
+            perms: The permutations to use.
 
         Returns:
-            A ShapleyResults object containing the Shapley attribution, the
-            estimated error in the Shapley attribution, the fitted coefficients
-            with all features, the out-of-sample R^2 with all features, and
-            optionally the attribution history and the error history.
+            The Shapley attribution.
         """
 
-        # Converting data into JAX arrays.
+        # Convert data into JAX arrays.
         X_train = jnp.array(X_train)
         X_test = jnp.array(X_test)
         y_train = jnp.array(y_train)
@@ -154,11 +153,13 @@ def __(attrs):
 
         rng = random.default_rng(seed)
 
-        if perms is None:
+        if perms is None or perms.ndim != 2 or perms.shape[1] != p or len(perms) % batch_size != 0:
             if p < 9:
-                perms = it.permutations(range(p))
+                perms = np.array(list(it.permutations(range(p))))
+                num_batches = 1
+                batch_size = len(perms)
             else:
-                perms = (rng.permutation(p) for _ in range(num_iters))
+                perms = np.array([rng.permutation(p) for _ in range(num_batches * batch_size)])
 
         # Compute the reduction
         y_test_norm_sq = jnp.linalg.norm(y_test) ** 2
@@ -166,25 +167,26 @@ def __(attrs):
         theta = jnp.linalg.lstsq(X_train_tilde, y_train_tilde, rcond=None)[0]
         r_squared = (jnp.linalg.norm(y_test_tilde) ** 2 - jnp.linalg.norm(y_test_tilde - X_test_tilde @ theta) ** 2) / y_test_norm_sq
 
-        # Iterate over the permutations to compute lifts
+        # Initialize the Shapley values and covariance
         shapley_values = jnp.zeros(p)
         attribution_cov = jnp.zeros((p, p))
-        attribution_errors = jnp.full(p, 0.)
-        overall_error = 0.
-        for i, perm in enumerate(perms, 1):
-            # Compute the lift
-            perm = np.array(perm)
-            lift = square_shapley(X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde, y_test_norm_sq, perm)
 
-            # Update the mean and biased sample covariance
-            shapley_values = (i - 1) / i * shapley_values + lift / i
-            deviation = lift - shapley_values
-            attribution_cov = (i - 1) / i * (attribution_cov + jnp.outer(deviation, deviation) / i)
+        # Iterate over the batches of permutations
+        for i in range(num_batches):
+            perm_batch = perms[i * batch_size:(i + 1) * batch_size]
 
-            # Update the errors
-            if ((i % (2 ** 8) == 0) or (i == num_iters)) and p >= 9:
-                unbiased_cov = attribution_cov * i / (i - 1)
-                attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
+            # Compute the lifts for each permutation in the batch in parallel
+            lifts = jax.pmap(partial(square_shapley, X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde, y_test_norm_sq))(perm_batch)
+
+            # Update the Shapley values and covariance
+            shapley_values = shapley_values * (i * batch_size) / ((i + 1) * batch_size) + jnp.sum(lifts, axis=0) / ((i + 1) * batch_size)
+            deviation = lifts - shapley_values
+            attribution_cov = attribution_cov * (i * batch_size) / ((i + 1) * batch_size) + jnp.sum(jnp.outer(d, d) for d in deviation) / ((i + 1) * batch_size)
+
+            # Estimating errors
+            if ((i + 1) % batch_size == 0) or (i + 1 == num_batches):
+                unbiased_cov = attribution_cov * ((i + 1) * batch_size) / (i * batch_size)
+                attribution_errors, overall_error = error_estimates(rng, unbiased_cov / ((i + 1) * batch_size))
 
                 # Check the stopping criterion
                 if overall_error < tolerance:
@@ -192,7 +194,6 @@ def __(attrs):
 
         return ShapleyResults(
             attribution=shapley_values,
-            attribution_history=None,
             theta=theta,
             overall_error=overall_error,
             error_history=None,
@@ -201,6 +202,7 @@ def __(attrs):
         )
 
 
+    @partial(jax.jit, static_argnums=(2, 3, 4))
     def square_shapley(X_train: jnp.ndarray, X_test: jnp.ndarray,
                        y_train: jnp.ndarray, y_test: jnp.ndarray,
                        y_norm_sq: float, perm: jnp.ndarray) -> jnp.ndarray:
@@ -229,12 +231,13 @@ def __(attrs):
 
         Y_test = jnp.tile(y_test, (p+1, 1))
         costs = jnp.sum((X @ T - Y_test.T) ** 2, axis=0)
-        R_sq = (jnp.linalg.norm(y_test) ** 2 - costs) / y_norm_sq
+        R_sq = (y_norm_sq - costs) / y_norm_sq
         L = jnp.ediff1d(R_sq)[jnp.argsort(perm)]
 
         return L
 
 
+    @jax.jit
     def reduce_data(X_train: jnp.ndarray, X_test: jnp.ndarray,
                     y_train: jnp.ndarray, y_test: jnp.ndarray, 
                     reg: float):
@@ -252,7 +255,6 @@ def __(attrs):
             The reduced data.
         """
         N, p = X_train.shape
-        M, _ = X_test.shape
 
         X_train = X_train / jnp.sqrt(N)
         X_train = jnp.vstack((X_train, jnp.sqrt(reg) * jnp.eye(p)))
@@ -266,6 +268,7 @@ def __(attrs):
         return X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde
 
 
+    @partial(jax.jit, static_argnums=(0,))
     def error_estimates(rng, cov: jnp.ndarray):
         """
         Estimates the error in the Shapley attribution.
@@ -300,8 +303,10 @@ def __(attrs):
         jax,
         jnp,
         jsp,
+        lax,
         ls_spa,
         np,
+        ops,
         partial,
         pd,
         random,
@@ -367,11 +372,6 @@ def __(ls_spa, np):
 @app.cell
 def __(results):
     results
-    return
-
-
-@app.cell
-def __():
     return
 
 

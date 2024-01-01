@@ -35,7 +35,6 @@ import itertools as it
 @dataclass
 class ShapleyResults:
     attribution: np.ndarray
-    attribution_history: np.ndarray | None
     theta: np.ndarray
     overall_error: float
     error_history: np.ndarray | None
@@ -106,7 +105,8 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
            y_train: np.ndarray | pd.Series,
            y_test: np.ndarray | pd.Series,
            reg: float = 0.,
-           num_iters: int = 2 ** 14,
+           num_batches: int = 2 ** 6,
+           batch_size: int = 2 ** 8,
            tolerance: float = 1e-2,
            seed: int = 42,
            perms: np.ndarray | None = None) -> ShapleyResults:
@@ -143,11 +143,15 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
 
     rng = random.default_rng(seed)
 
-    if perms is None:
+    if perms is None or perms.ndim != 2 or perms.shape[1] != p or len(perms) % batch_size != 0:
         if p < 9:
             perms = it.permutations(range(p))
+            num_batches = 1
+            batch_size = 2 ** 8
         else:
-            perms = (rng.permutation(p) for _ in range(num_iters))
+            perms = (rng.permutation(p) for _ in range(num_batches * batch_size))
+    else:
+        num_batches = len(perms) // batch_size
 
     # Compute the reduction
     y_test_norm_sq = np.linalg.norm(y_test) ** 2
@@ -160,6 +164,8 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     attribution_cov = np.zeros((p, p))
     attribution_errors = np.full(p, 0.)
     overall_error = 0.
+    error_history = np.zeros(num_batches)
+    
     for i, perm in enumerate(perms, 1):
         # Compute the lift
         perm = np.array(perm)
@@ -171,9 +177,10 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         attribution_cov = (i - 1) / i * (attribution_cov + np.outer(deviation, deviation) / i)
 
         # Update the errors
-        if ((i % (2 ** 8) == 0) or (i == num_iters)) and p >= 9:
+        if ((i % batch_size == 0) or (i == num_batches * batch_size)) and p >= 9:
             unbiased_cov = attribution_cov * i / (i - 1)
             attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
+            error_history[i // batch_size] == overall_error
 
             # Check the stopping criterion
             if overall_error < tolerance:
@@ -181,10 +188,9 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
 
     return ShapleyResults(
         attribution=shapley_values,
-        attribution_history=None,
         theta=theta,
         overall_error=overall_error,
-        error_history=None,
+        error_history=error_history,
         attribution_errors=attribution_errors,
         r_squared=r_squared
     )
