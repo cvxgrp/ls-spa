@@ -176,7 +176,7 @@ def __(attrs):
             perm_batch = perms[i * batch_size:(i + 1) * batch_size]
 
             # Compute the lifts for each permutation in the batch in parallel
-            lifts = jax.pmap(partial(square_shapley, X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde, y_test_norm_sq))(perm_batch)
+            lifts = jax.vmap(partial(square_shapley, X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde, y_test_norm_sq))(perm_batch)
 
             # Update the Shapley values and covariance
             shapley_values = shapley_values * (i * batch_size) / ((i + 1) * batch_size) + jnp.sum(lifts, axis=0) / ((i + 1) * batch_size)
@@ -184,13 +184,12 @@ def __(attrs):
             attribution_cov = attribution_cov * (i * batch_size) / ((i + 1) * batch_size) + jnp.sum(jnp.outer(d, d) for d in deviation) / ((i + 1) * batch_size)
 
             # Estimating errors
-            if ((i + 1) % batch_size == 0) or (i + 1 == num_batches):
-                unbiased_cov = attribution_cov * ((i + 1) * batch_size) / (i * batch_size)
-                attribution_errors, overall_error = error_estimates(rng, unbiased_cov / ((i + 1) * batch_size))
+            unbiased_cov = attribution_cov * ((i + 1) * batch_size) / (i * batch_size)
+            attribution_errors, overall_error = error_estimates(rng, unbiased_cov / ((i + 1) * batch_size))
 
-                # Check the stopping criterion
-                if overall_error < tolerance:
-                    break
+            # Check the stopping criterion
+            if overall_error < tolerance:
+                break
 
         return ShapleyResults(
             attribution=shapley_values,
