@@ -1,4 +1,4 @@
-# Copyright 2023 Logan Bell, Nikhil Devanathan, and Stephen Boyd
+# Copyright 2024 Logan Bell, Nikhil Devanathan, and Stephen Boyd
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """
-This module contains a method to efficiently estimate a Shapley 
-attribution for least squares problems.
+This module contains an experimental implementation of a method
+to efficiently estimate a Shapley attribution for least squares problems.
 
-This method is described in the paper Efficient Shapley Performance 
+The method is described in the paper Efficient Shapley Performance 
 Attribution for Least-Squares Regression (arXiv:2310.19245) by Logan 
 Bell, Nikhil Devanathan, and Stephen Boyd.
 """
