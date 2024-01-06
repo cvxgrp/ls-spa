@@ -32,7 +32,6 @@ to the top of your Python file.
 
 Optional dependencies are
 - `jax` for extra performance
-- `altair` for plotting
 - `marimo` for using the demo notebook
 
 ## Usage
