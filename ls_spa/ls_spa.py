@@ -44,7 +44,7 @@ class ShapleyResults:
         attrs_str = ""
         coefs_str = ""
 
-        if len(attrs) <= 5:
+        if len(self.attribution) <= 5:
             attr_str = "(" + "".join("{:.2f}, ".format(a) for a in self.attribution.flatten())[:-2] + ")"
             coefs_str = "(" + "".join("{:.2f}, ".format(c) for c in self.theta.flatten())[:-2] + ")"
         else:
