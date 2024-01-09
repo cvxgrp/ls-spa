@@ -90,7 +90,7 @@ For more info, see [optional arguments](#Optional-arguments).
 
 ## Example notebook
 
-In this [notebook](./shapley_toy.ipynb), we walk through the process of
+In this [notebook](./shapley_toy.py), we walk through the process of
 computing Shapley values on the data for the toy example in the
 companion paper. We then use `ls_spa` to compute the Shapley attribution
 on the same data.
