@@ -7,8 +7,9 @@ Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell
 Nikhil Devanathan, and Stephen Boyd.
 
 The results provided in the reference paper were generated using a more performant, but
-harder to use implementation of the same algorithm. This benchmark code can be found
-at [cvxgrp/ls-spa-benchmark](https://github.com/cvxgrp/ls-spa-benchmark). We recommend
+harder to use implementation of the same algorithm. This benchmark code and the numerical 
+experiments from the reference paper can be found at 
+[cvxgrp/ls-spa-benchmark](https://github.com/cvxgrp/ls-spa-benchmark). We recommend
 caution in trying to use the benchmark code.
 
 This is a pre-release version of the code; significant tweaks and updates may occur in the near future.
