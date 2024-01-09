@@ -13,18 +13,16 @@
 # limitations under the License.
 
 """
-This module contains a method to efficiently estimate a Shapley 
+This module contains a method to efficiently estimate a Shapley
 attribution for least squares problems.
 
-This method is described in the paper Efficient Shapley Performance 
-Attribution for Least-Squares Regression (arXiv:2310.19245) by Logan 
+This method is described in the paper Efficient Shapley Performance
+Attribution for Least-Squares Regression (arXiv:2310.19245) by Logan
 Bell, Nikhil Devanathan, and Stephen Boyd.
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import partial
-from typing import Literal, Tuple
+from typing import Tuple
 
 import numpy as np
 import scipy as sp
@@ -45,7 +43,7 @@ class ShapleyResults:
         """Makes printing the dataclass look nice."""
         attrs_str = ""
         coefs_str = ""
-        
+
         if len(attrs) <= 5:
             attr_str = "(" + "".join("{:.2f}, ".format(a) for a in self.attribution.flatten())[:-2] + ")"
             coefs_str = "(" + "".join("{:.2f}, ".format(c) for c in self.theta.flatten())[:-2] + ")"
@@ -165,7 +163,7 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     attribution_errors = np.full(p, 0.)
     overall_error = 0.
     error_history = np.zeros(num_batches)
-    
+
     for i, perm in enumerate(perms, 1):
         # Compute the lift
         perm = np.array(perm)
@@ -231,7 +229,7 @@ def square_shapley(X_train: np.ndarray, X_test: np.ndarray,
 
 
 def reduce_data(X_train: np.ndarray, X_test: np.ndarray,
-                y_train: np.ndarray, y_test: np.ndarray, 
+                y_train: np.ndarray, y_test: np.ndarray,
                 reg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Reduces the data to a smaller problem.
