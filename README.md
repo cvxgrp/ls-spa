@@ -6,6 +6,11 @@ Library companion to the paper [Efficient Shapley Performance Attribution for Le
 Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell,
 Nikhil Devanathan, and Stephen Boyd.
 
+The results provided in the reference paper were generated using a more performant, but
+harder to use implementation of the same algorithm. This benchmark code can be found
+at [cvxgrp/ls-spa-benchmark](https://github.com/cvxgrp/ls-spa-benchmark). We recommend
+caution in trying to use the benchmark code.
+
 This is a pre-release version of the code; significant tweaks and updates may occur in the near future.
 
 ## Installation
@@ -14,10 +19,6 @@ To install this package, execute
 ```
 pip install git+https://github.com/cvxgrp/ls-spa
 ```
-This package also has an optional [JAX](https://github.com/google/jax) backend that offers
-signficantly improved performance for power users. JAX installation varies by platform 
-(do not try to blindly `pip install jax`). Follow 
-[these instructions](https://github.com/google/jax#installation) to correctly install JAX.
 
 Import `ls_spa` by adding
 ```
@@ -31,7 +32,6 @@ to the top of your Python file.
 - `pandas`
 
 Optional dependencies are
-- `jax` for extra performance
 - `marimo` for using the demo notebook
 
 ## Usage
