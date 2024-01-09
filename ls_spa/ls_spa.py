@@ -41,7 +41,7 @@ class ShapleyResults:
 
     def __repr__(self):
         """Makes printing the dataclass look nice."""
-        attrs_str = ""
+        attr_str = ""
         coefs_str = ""
 
         if len(self.attribution) <= 5:
@@ -178,7 +178,7 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         if ((i % batch_size == 0) or (i == num_batches * batch_size)) and p >= 9:
             unbiased_cov = attribution_cov * i / (i - 1)
             attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
-            error_history[i // batch_size] == overall_error
+            error_history[i // batch_size - 1] = overall_error
 
             # Check the stopping criterion
             if overall_error < tolerance:
