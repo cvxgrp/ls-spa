@@ -1,10 +1,16 @@
 # Least-Squares Shapley Performance Attribution (LS-SPA)
 
-### [Installation](#Installation) - [Usage](#Usage) - [Hello world](#Hello-world) - [Example notebook](#Example-notebook) - [Optional arguments](#Optional-arguments)
+### [Installation](#Installation) - [Usage](#Usage) - [Hello world](#Hello-world) - [Example notebook](#Example-notebook) - [Optional arguments](#Optional-arguments) - [Citing](#Citing)
 
 Library companion to the paper [Efficient Shapley Performance Attribution for Least-Squares
 Regression](https://web.stanford.edu/~boyd/papers/ls_shapley.html) by Logan Bell,
 Nikhil Devanathan, and Stephen Boyd.
+
+The results provided in the reference paper were generated using a more performant, but
+harder to use implementation of the same algorithm. This benchmark code and the numerical 
+experiments from the reference paper can be found at 
+[cvxgrp/ls-spa-benchmark](https://github.com/cvxgrp/ls-spa-benchmark). We recommend
+caution in trying to use the benchmark code.
 
 This is a pre-release version of the code; significant tweaks and updates may occur in the near future.
 
@@ -14,9 +20,6 @@ To install this package, execute
 ```
 pip install git+https://github.com/cvxgrp/ls-spa
 ```
-and also install [JAX](https://github.com/google/jax). JAX is a dependency of `ls_spa`, but its 
-installation varies by platform (do not try to blindly `pip install jax`). 
-Follow [these instructions](https://github.com/google/jax#installation) to correctly install JAX.
 
 Import `ls_spa` by adding
 ```
@@ -28,11 +31,9 @@ to the top of your Python file.
 - `numpy`
 - `scipy`
 - `pandas`
-- `jax`
 
 Optional dependencies are
-- `matplotlib` for plotting
-- `jupyter-notebook` for using the demo notebook
+- `notebook` for using the demo notebook
 
 ## Usage
 
@@ -89,7 +90,7 @@ For more info, see [optional arguments](#Optional-arguments).
 
 ## Example notebook
 
-In this [notebook](./shapley_toy.ipynb), we walk through the process of
+In this [notebook](./notebooks/shapley_toy.ipynb), we walk through the process of
 computing Shapley values on the data for the toy example in the
 companion paper. We then use `ls_spa` to compute the Shapley attribution
 on the same data.

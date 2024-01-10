@@ -14,7 +14,7 @@ tags = tags.decode("utf-8").split("\n")
 tags.sort()
 
 # PEP 440 won't accept the v in front, so here we remove it, strip the new line and decode the byte stream
-VERSION_FROM_GIT_TAG = tags[-1][1:]
+VERSION_FROM_GIT_TAG = "1.0.0" #tags[-1][1:]
 
 setup(
     name="ls_spa",
