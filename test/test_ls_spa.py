@@ -9,6 +9,7 @@ class TestLSSPA(unittest.TestCase):
 
         n = 100
         diagonal = np.sqrt(np.diag(np.arange(1, n+1)))
+        self.diagonal = diagonal
         A = rng.standard_normal((n, n))
         X, _ = np.linalg.qr(A)
 
@@ -18,12 +19,16 @@ class TestLSSPA(unittest.TestCase):
         self.y_test_easy = self.y_train_easy.copy()
 
         hard_theta = rng.standard_normal(n)
-        self.X_train_hard = rng.multivariate_normal(np.zeros(n), A @ A.T, n)
-        self.X_test_hard = rng.multivariate_normal(np.zeros(n), A @ A.T, n)
-        self.y_train_hard = (self.X_train_hard @ hard_theta
-                             + rng.standard_normal(n))
-        self.y_test_hard = (self.X_test_hard @ hard_theta
-                            + rng.standard_normal(n))
+        X_train_hard = rng.multivariate_normal(np.zeros(n), A @ A.T, n)
+        self.X_train_hard = X_train_hard - np.mean(X_train_hard, axis=0,
+                                                   keepdims=True)
+        X_test_hard = rng.multivariate_normal(np.zeros(n), A @ A.T, n)
+        self.X_test_hard = X_test_hard - np.mean(X_train_hard, axis=0,
+                                                 keepdims=True)
+        y_train_hard = self.X_train_hard @ hard_theta + rng.standard_normal(n)
+        self.y_train_hard = y_train_hard - np.mean(y_train_hard)
+        y_test_hard = self.X_test_hard @ hard_theta + rng.standard_normal(n)
+        self.y_test_hard = y_test_hard - np.mean(y_test_hard)
 
 
     def test_return_type(self):
@@ -50,32 +55,53 @@ class TestLSSPA(unittest.TestCase):
         np.testing.assert_almost_equal(theta_hard, hard_results.theta)
 
 
-    # def test_regularization(self):
-    #     # Test if the regularization parameter affects the output
-    #     result_with_reg = ls_spa(self.X_train, self.X_test, self.y_train, self.y_test, reg=0.1)
-    #     result_without_reg = ls_spa(self.X_train, self.X_test, self.y_train, self.y_test, reg=0.0)
-    #     # Add your logic to compare results
+    def test_rsquared(self):
+        theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard,
+                                     rcond=None)[0]
+        y_hat = self.X_test_hard @ theta_hard
+        tss = np.sum(self.y_test_hard ** 2)
+        rss = np.sum((self.y_test_hard - y_hat) ** 2)
+        r_squared = 1 - rss / tss
+        hard_results = ls_spa(self.X_train_hard, self.X_test_hard,
+                              self.y_train_hard, self.y_test_hard,
+                              num_batches=2, batch_size=2)
+        np.testing.assert_almost_equal(r_squared, hard_results.r_squared)
 
-    # def test_batch_size_effect(self):
-    #     # Test if changing the batch size affects the output
-    #     # Similar to test_regularization_effect, compare outputs with different batch sizes
 
-    # def test_tolerance_effect(self):
-    #     # Test if the tolerance parameter affects the output
-    #     # Similar to test_regularization_effect, compare outputs with different tolerances
+    def test_regularization(self):
+        # Test if the regularization parameter affects the output
+        N, p = self.X_train_hard.shape
+        X_train_regular = np.vstack((self.X_train_hard / np.sqrt(N),
+                                     np.sqrt(0.1) * np.eye(p)))
+        y_train_regular = np.concatenate((self.y_train_hard / np.sqrt(N),
+                                          np.zeros(p)))
+        theta_regular = np.linalg.lstsq(X_train_regular, y_train_regular,
+                                        rcond=None)[0]
+        result_regular = ls_spa(self.X_train_hard, self.X_test_hard,
+                                self.y_train_hard, self.y_test_hard, reg=0.1,
+                                num_batches=2, batch_size=2)
+        np.testing.assert_almost_equal(theta_regular, result_regular.theta)
 
-    # def test_random_seed_consistency(self):
-    #     # Test if using the same seed produces consistent results
-    #     result1 = ls_spa(self.X_train, self.X_test, self.y_train, self.y_test, seed=42)
-    #     result2 = ls_spa(self.X_train, self.X_test, self.y_train, self.y_test, seed=42)
-    #     # Compare result1 and result2
 
-    # def test_invalid_input(self):
-    #     # Test the function with invalid input and check if it raises appropriate errors
-    #     with self.assertRaises(SomeExpectedException):
-    #         ls_spa(invalid_input)
+    def test_random_seed_consistency(self):
+        # Test if using the same seed produces consistent results
+        result1 = ls_spa(self.X_train_hard, self.X_test_hard,
+                         self.y_train_hard, self.y_test_hard, seed=42,
+                         num_batches=2, batch_size=2)
+        result2 = ls_spa(self.X_train_hard, self.X_test_hard,
+                         self.y_train_hard, self.y_test_hard, seed=42,
+                         num_batches=2, batch_size=2)
+        np.testing.assert_almost_equal(result1.attribution, result2.attribution)
 
-    # # You can add more test cases as needed
+
+    def test_correctness_easy(self):
+        p = self.X_train_easy.shape[1]
+        proposal = self.X_train_easy.T @ self.y_train_easy / np.arange(1, p+1)
+        easy_results = ls_spa(self.X_train_easy, self.X_test_easy,
+                              self.y_train_easy, self.y_test_easy,
+                              num_batches=256, batch_size=256)
+        np.testing.assert_almost_equal(proposal, easy_results.attribution)
+
 
 if __name__ == '__main__':
     unittest.main()
