@@ -12,8 +12,6 @@ experiments from the reference paper can be found at
 [cvxgrp/ls-spa-benchmark](https://github.com/cvxgrp/ls-spa-benchmark). We recommend
 caution in trying to use the benchmark code.
 
-This is a pre-release version of the code; significant tweaks and updates may occur in the near future.
-
 ## Installation
 
 To install this package, execute
