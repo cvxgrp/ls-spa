@@ -96,7 +96,23 @@ class TestLSSPA(unittest.TestCase):
 
     def test_correctness_easy(self):
         p = self.X_train_easy.shape[1]
-        proposal = self.X_train_easy.T @ self.y_train_easy / np.arange(1, p+1)
+        proposal = np.zeros(p)
+        for i in range(p):
+            with_p = self.X_train_easy[:, 0:i+1]
+            without_p = self.X_train_easy[:, 0:i]
+            theta_with_p = np.linalg.lstsq(with_p, self.y_train_easy,
+                                           rcond=None)[0]
+            theta_without_p = np.linalg.lstsq(without_p, self.y_train_easy,
+                                              rcond=None)[0]
+            y_hat_with_p = self.X_test_easy[:, 0:i+1] @ theta_with_p
+            y_hat_without_p = self.X_test_easy[:, 0:i] @ theta_without_p
+            tss = np.sum(self.y_test_easy ** 2)
+            rss_with_p = np.sum((self.y_test_easy - y_hat_with_p) ** 2)
+            rss_without_p = np.sum((self.y_test_easy - y_hat_without_p) ** 2)
+            r_squared_with_p = 1 - rss_with_p / tss
+            r_squared_without_p = 1 - rss_without_p / tss
+            proposal[i] += r_squared_with_p - r_squared_without_p
+
         easy_results = ls_spa(self.X_train_easy, self.X_test_easy,
                               self.y_train_easy, self.y_test_easy,
                               num_batches=256, batch_size=256)
