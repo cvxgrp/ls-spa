@@ -33,7 +33,7 @@ to the top of your Python file.
 - `pandas`
 
 Optional dependencies are
-- `marimo` for using the demo notebook
+- `notebook` for using the demo notebook
 
 ## Usage
 
@@ -90,7 +90,7 @@ For more info, see [optional arguments](#Optional-arguments).
 
 ## Example notebook
 
-In this [notebook](./notebooks/shapley_toy.py), we walk through the process of
+In this [notebook](./notebooks/shapley_toy.ipynb), we walk through the process of
 computing Shapley values on the data for the toy example in the
 companion paper. We then use `ls_spa` to compute the Shapley attribution
 on the same data.
