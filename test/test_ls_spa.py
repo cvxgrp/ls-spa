@@ -1,6 +1,47 @@
 import unittest
 import numpy as np
-from ls_spa import ls_spa, ShapleyResults
+from ls_spa import ls_spa, ShapleyResults, merge_sample_mean, merge_sample_cov
+
+
+class TestOnlineStats(unittest.TestCase):
+    def setUp(self):
+        rng = np.random.default_rng(128)
+
+        n = 100
+        self.old_N = 2*n
+        self.new_N = 3*n
+        N = self.old_N + self.new_N
+
+        A = rng.standard_normal((n, 3*n))
+        S = A @ A.T
+        self.X = rng.multivariate_normal(np.zeros(n), S, N)
+
+
+    def test_merge_sample_mean(self):
+        batch_1 = self.X[:self.old_N]
+        batch_2 = self.X[self.old_N:]
+
+        old_mean = np.mean(batch_1, axis=0)
+        new_mean = np.mean(batch_2, axis=0)
+        full_mean = np.mean(self.X, axis=0)
+        merged_mean = merge_sample_mean(old_mean, new_mean,
+                                        self.old_N, self.new_N)
+        np.testing.assert_almost_equal(full_mean, merged_mean)
+
+
+    def test_merge_sample_cov(self):
+        batch_1 = self.X[:self.old_N]
+        batch_2 = self.X[self.old_N:]
+
+        old_mean = np.mean(batch_1, axis=0)
+        new_mean = np.mean(batch_2, axis=0)
+        old_cov = np.cov(batch_1, rowvar=False, bias=True)
+        new_cov = np.cov(batch_2, rowvar=False, bias=True)
+        full_cov = np.cov(self.X, rowvar=False, bias=True)
+        merged_cov = merge_sample_cov(old_mean, new_mean,
+                                      old_cov, new_cov,
+                                      self.old_N, self.new_N)
+        np.testing.assert_almost_equal(full_cov, merged_cov)
 
 
 class TestLSSPA(unittest.TestCase):

@@ -30,6 +30,7 @@ from numpy import random
 import pandas as pd
 import itertools as it
 
+
 @dataclass
 class ShapleyResults:
     attribution: np.ndarray
@@ -98,6 +99,25 @@ def validate_data(X_train: np.ndarray,
                                "observations.")
 
 
+def merge_sample_mean(old_mean: np.ndarray, new_mean: np.ndarray,
+                      old_N: int, new_N: int) -> np.ndarray:
+    N = old_N + new_N
+    adj_old_mean = (old_N / N) * old_mean
+    adj_new_mean = (new_N / N) * new_mean
+    return adj_old_mean + adj_new_mean
+
+
+def merge_sample_cov(old_mean: np.ndarray, new_mean: np.ndarray,
+                     old_cov: np.ndarray, new_cov: np.ndarray,
+                     old_N: int, new_N: int) -> np.ndarray:
+    N = old_N + new_N
+    mean_diff = old_mean - new_mean
+    adj_old_cov = (old_N / N) * old_cov
+    adj_new_cov = (new_N / N) * new_cov
+    delta = (old_N / N) * (new_N / N) * np.outer(mean_diff, mean_diff)
+    return adj_old_cov + adj_new_cov + delta
+
+
 def ls_spa(X_train: np.ndarray | pd.DataFrame,
            X_test: np.ndarray | pd.DataFrame,
            y_train: np.ndarray | pd.Series,
@@ -139,8 +159,10 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     validate_data(X_train, X_test, y_train, y_test)
     p = X_train.shape[1]
 
+    # If perms were not passed or are invalid, then generate our own. XXX this
+    # should throw an exception if invalid perms are passed, instead of
+    # silently doing our own thing.
     rng = random.default_rng(seed)
-
     if perms is None or perms.ndim != 2 or perms.shape[1] != p or len(perms) % batch_size != 0:
         if p < 9:
             perms = it.permutations(range(p))
@@ -153,9 +175,9 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
 
     # Compute the reduction
     y_test_norm_sq = np.linalg.norm(y_test) ** 2
-    X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde = reduce_data(X_train, X_test, y_train, y_test, reg)
-    theta = np.linalg.lstsq(X_train_tilde, y_train_tilde, rcond=None)[0]
-    r_squared = (np.linalg.norm(y_test_tilde) ** 2 - np.linalg.norm(y_test_tilde - X_test_tilde @ theta) ** 2) / y_test_norm_sq
+    (X_train_tilde, X_test_tilde,
+     y_train_tilde, y_test_tilde) = reduce_data(X_train, X_test,
+                                                y_train, y_test, reg)
 
     # Iterate over the permutations to compute lifts
     shapley_values = np.zeros(p)
@@ -167,22 +189,31 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     for i, perm in enumerate(perms, 1):
         # Compute the lift
         perm = np.array(perm)
-        lift = square_shapley(X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde, y_test_norm_sq, perm)
+        lift = square_shapley(X_train_tilde, X_test_tilde,
+                              y_train_tilde, y_test_tilde, y_test_norm_sq, perm)
 
         # Update the mean and biased sample covariance
-        shapley_values = (i - 1) / i * shapley_values + lift / i
-        deviation = lift - shapley_values
-        attribution_cov = (i - 1) / i * (attribution_cov + np.outer(deviation, deviation) / i)
+        attribution_cov = merge_sample_cov(shapley_values, lift[np.newaxis],
+                                           attribution_cov, np.zeros((p, p)),
+                                           i-1, 1)
+        shapley_values = merge_sample_mean(shapley_values, lift[np.newaxis],
+                                           i-1, 1)
 
         # Update the errors
         if ((i % batch_size == 0) or (i == num_batches * batch_size)) and p >= 9:
             unbiased_cov = attribution_cov * i / (i - 1)
-            attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
+            attribution_errors, overall_error = error_estimates(rng,unbiased_cov / i)
             error_history[i // batch_size - 1] = overall_error
 
             # Check the stopping criterion
             if overall_error < tolerance:
                 break
+
+    # Compute auxiliary information
+    theta = np.linalg.lstsq(X_train_tilde, y_train_tilde, rcond=None)[0]
+    r_squared = ((np.linalg.norm(y_test_tilde) ** 2
+                 - np.linalg.norm(y_test_tilde - X_test_tilde @ theta) ** 2)
+                 / y_test_norm_sq)
 
     return ShapleyResults(
         attribution=shapley_values,
