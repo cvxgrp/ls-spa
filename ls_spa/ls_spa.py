@@ -123,7 +123,7 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
            y_train: np.ndarray | pd.Series,
            y_test: np.ndarray | pd.Series,
            reg: float = 0.,
-           num_batches: int = 2 ** 6,
+           max_samples: int = 2 ** 14,
            batch_size: int = 2 ** 8,
            tolerance: float = 1e-2,
            seed: int = 42,
@@ -138,7 +138,7 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         y_test: The test labels.
         reg: The regularization parameter.
         batch_size: The number of samples to use in each batch.
-        num_batches: The number of batches to use.
+        max_samples: The maximum number of samples.
         tolerance: The tolerance for the stopping criterion.
         seed: The seed for the random number generator.
         perms: The permutations to use. If None, the permutations are
@@ -163,15 +163,14 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     # should throw an exception if invalid perms are passed, instead of
     # silently doing our own thing.
     rng = random.default_rng(seed)
-    if perms is None or perms.ndim != 2 or perms.shape[1] != p or len(perms) % batch_size != 0:
+    if perms is None:
         if p < 9:
             perms = it.permutations(range(p))
-            num_batches = 1
             batch_size = 2 ** 8
         else:
-            perms = (rng.permutation(p) for _ in range(num_batches * batch_size))
+            perms = (rng.permutation(p) for _ in range(max_samples))
     else:
-        num_batches = len(perms) // batch_size
+        max_samples = 2**100
 
     # Compute the reduction
     y_test_norm_sq = np.linalg.norm(y_test) ** 2
@@ -184,30 +183,41 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     attribution_cov = np.zeros((p, p))
     attribution_errors = np.full(p, 0.)
     overall_error = 0.
-    error_history = np.zeros(num_batches)
+    error_history = np.zeros(0)
 
+    counter = 0
     for i, perm in enumerate(perms, 1):
+        counter = i
+
         # Compute the lift
         perm = np.array(perm)
         lift = square_shapley(X_train_tilde, X_test_tilde,
                               y_train_tilde, y_test_tilde, y_test_norm_sq, perm)
 
         # Update the mean and biased sample covariance
-        attribution_cov = merge_sample_cov(shapley_values, lift[np.newaxis],
+        attribution_cov = merge_sample_cov(shapley_values, lift,
                                            attribution_cov, np.zeros((p, p)),
                                            i-1, 1)
-        shapley_values = merge_sample_mean(shapley_values, lift[np.newaxis],
+        shapley_values = merge_sample_mean(shapley_values, lift,
                                            i-1, 1)
 
         # Update the errors
-        if ((i % batch_size == 0) or (i == num_batches * batch_size)) and p >= 9:
+        if (i % batch_size == 0 or i == max_samples - 1) and p >= 9:
             unbiased_cov = attribution_cov * i / (i - 1)
             attribution_errors, overall_error = error_estimates(rng,unbiased_cov / i)
-            error_history[i // batch_size - 1] = overall_error
+            error_history = np.append(error_history, overall_error)
 
             # Check the stopping criterion
             if overall_error < tolerance:
                 break
+
+    # Last mini-batch
+    if p >= 9:
+        unbiased_cov = attribution_cov * counter / (counter - 1)
+        attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
+        if len(error_history) == 0 or not np.isclose(error_history[-1], overall_error):
+            error_history = np.append(error_history, overall_error)
+
 
     # Compute auxiliary information
     theta = np.linalg.lstsq(X_train_tilde, y_train_tilde, rcond=None)[0]

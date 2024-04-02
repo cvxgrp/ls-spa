@@ -85,14 +85,14 @@ class TestLSSPA(unittest.TestCase):
                                      rcond=None)[0]
         easy_results = ls_spa(self.X_train_easy, self.X_test_easy,
                               self.y_train_easy, self.y_test_easy,
-                              num_batches=2, batch_size=2)
+                              max_samples=4, batch_size=2)
         np.testing.assert_almost_equal(theta_easy, easy_results.theta)
 
         theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard,
                                      rcond=None)[0]
         hard_results = ls_spa(self.X_train_hard, self.X_test_hard,
                               self.y_train_hard, self.y_test_hard,
-                              num_batches=2, batch_size=2)
+                              max_samples=4, batch_size=2)
         np.testing.assert_almost_equal(theta_hard, hard_results.theta)
 
 
@@ -105,7 +105,7 @@ class TestLSSPA(unittest.TestCase):
         r_squared = 1 - rss / tss
         hard_results = ls_spa(self.X_train_hard, self.X_test_hard,
                               self.y_train_hard, self.y_test_hard,
-                              num_batches=2, batch_size=2)
+                              max_samples=4, batch_size=2)
         np.testing.assert_almost_equal(r_squared, hard_results.r_squared)
 
 
@@ -120,7 +120,7 @@ class TestLSSPA(unittest.TestCase):
                                         rcond=None)[0]
         result_regular = ls_spa(self.X_train_hard, self.X_test_hard,
                                 self.y_train_hard, self.y_test_hard, reg=0.1,
-                                num_batches=2, batch_size=2)
+                                max_samples=4, batch_size=2)
         np.testing.assert_almost_equal(theta_regular, result_regular.theta)
 
 
@@ -128,10 +128,10 @@ class TestLSSPA(unittest.TestCase):
         # Test if using the same seed produces consistent results
         result1 = ls_spa(self.X_train_hard, self.X_test_hard,
                          self.y_train_hard, self.y_test_hard, seed=42,
-                         num_batches=2, batch_size=2)
+                         max_samples=4, batch_size=2)
         result2 = ls_spa(self.X_train_hard, self.X_test_hard,
                          self.y_train_hard, self.y_test_hard, seed=42,
-                         num_batches=2, batch_size=2)
+                         max_samples=4, batch_size=2)
         np.testing.assert_almost_equal(result1.attribution, result2.attribution)
 
 
@@ -156,7 +156,7 @@ class TestLSSPA(unittest.TestCase):
 
         easy_results = ls_spa(self.X_train_easy, self.X_test_easy,
                               self.y_train_easy, self.y_test_easy,
-                              num_batches=256, batch_size=256)
+                              max_samples=256*256, batch_size=256)
         np.testing.assert_almost_equal(proposal, easy_results.attribution)
 
 
