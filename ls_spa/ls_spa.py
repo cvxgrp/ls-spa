@@ -39,6 +39,7 @@ class ShapleyResults:
     error_history: np.ndarray | None
     attribution_errors: np.ndarray
     r_squared: float
+    attribution_history: np.ndarray | None
 
     def __repr__(self):
         """Makes printing the dataclass look nice."""
@@ -123,11 +124,13 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
            y_train: np.ndarray | pd.Series,
            y_test: np.ndarray | pd.Series,
            reg: float = 0.,
-           max_samples: int = 2 ** 14,
+           max_samples: int = 2 ** 13,
            batch_size: int = 2 ** 8,
            tolerance: float = 1e-2,
            seed: int = 42,
-           perms: np.ndarray | None = None) -> ShapleyResults:
+           perms: np.ndarray | None = None,
+           antithetical: bool = True,
+           return_attribution_history: bool = False) -> ShapleyResults:
     """
     Estimates the Shapley attribution for a least squares problem.
 
@@ -167,6 +170,7 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         if p < 9:
             perms = it.permutations(range(p))
             batch_size = 2 ** 8
+            antithetical = False
         else:
             perms = (rng.permutation(p) for _ in range(max_samples))
     else:
@@ -184,15 +188,25 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
     attribution_errors = np.full(p, 0.)
     overall_error = 0.
     error_history = np.zeros(0)
+    if return_attribution_history:
+        attribution_history = np.zeros((0, p))
+    else:
+        attribution_history = None
 
     counter = 0
     for i, perm in enumerate(perms, 1):
         counter = i
+        do_mini_batch = True
 
         # Compute the lift
         perm = np.array(perm)
         lift = square_shapley(X_train_tilde, X_test_tilde,
                               y_train_tilde, y_test_tilde, y_test_norm_sq, perm)
+        if antithetical:
+            lift = (lift + square_shapley(X_train_tilde, X_test_tilde,
+                                         y_train_tilde, y_test_tilde,
+                                         y_test_norm_sq, perm[::-1]))/2
+
 
         # Update the mean and biased sample covariance
         attribution_cov = merge_sample_cov(shapley_values, lift,
@@ -200,23 +214,26 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
                                            i-1, 1)
         shapley_values = merge_sample_mean(shapley_values, lift,
                                            i-1, 1)
+        if return_attribution_history:
+            attribution_history = np.vstack((attribution_history,
+                                             shapley_values))
 
         # Update the errors
         if (i % batch_size == 0 or i == max_samples - 1) and p >= 9:
             unbiased_cov = attribution_cov * i / (i - 1)
             attribution_errors, overall_error = error_estimates(rng,unbiased_cov / i)
             error_history = np.append(error_history, overall_error)
+            do_mini_batch = False
 
             # Check the stopping criterion
             if overall_error < tolerance:
                 break
 
     # Last mini-batch
-    if p >= 9:
+    if p >= 9 and do_mini_batch:
         unbiased_cov = attribution_cov * counter / (counter - 1)
         attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
-        if len(error_history) == 0 or not np.isclose(error_history[-1], overall_error):
-            error_history = np.append(error_history, overall_error)
+        error_history = np.append(error_history, overall_error)
 
 
     # Compute auxiliary information
@@ -231,7 +248,8 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         overall_error=overall_error,
         error_history=error_history,
         attribution_errors=attribution_errors,
-        r_squared=r_squared
+        r_squared=r_squared,
+        attribution_history=attribution_history
     )
 
 
