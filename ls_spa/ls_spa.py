@@ -22,7 +22,6 @@ Bell, Nikhil Devanathan, and Stephen Boyd.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 from typing import Tuple
 
 import numpy as np
@@ -39,8 +38,8 @@ class ShapleyResults:
     overall_error: float
     attribution_errors: np.ndarray
     r_squared: float
-    error_history: Optional[np.ndarray] = None
-    attribution_history: Optional[np.ndarray] = None
+    error_history: np.ndarray | None
+    attribution_history: np.ndarray | None
 
     def __repr__(self):
         """Makes printing the dataclass look nice."""
