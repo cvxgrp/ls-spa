@@ -37,9 +37,9 @@ class ShapleyResults:
     attribution: np.ndarray
     theta: np.ndarray
     overall_error: float
-    error_history: Optional[np.ndarray] = None
     attribution_errors: np.ndarray
     r_squared: float
+    error_history: Optional[np.ndarray] = None
     attribution_history: Optional[np.ndarray] = None
 
     def __repr__(self):
@@ -247,9 +247,9 @@ def ls_spa(X_train: np.ndarray | pd.DataFrame,
         attribution=shapley_values,
         theta=theta,
         overall_error=overall_error,
-        error_history=error_history,
         attribution_errors=attribution_errors,
         r_squared=r_squared,
+        error_history=error_history,
         attribution_history=attribution_history
     )
 
