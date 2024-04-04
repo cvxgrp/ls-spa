@@ -45,7 +45,7 @@ def __():
 @app.cell
 def __(mo):
     in_EXP_NAME = mo.ui.text(value="Medium", label=r"$\textnormal{Experiment Name}:$")
-    in_MAX_SAMPLES = mo.ui.number(start=8, stop=20, step=1, value=12,
+    in_MAX_SAMPLES = mo.ui.number(start=8, stop=20, step=1, value=13,
                                   label=r"$\log_2(\textnormal{Max Number of Samples}):$")
     in_load_gt = mo.ui.switch(value=True)
     in_p = mo.ui.number(start=10, stop=200, step=1, value=100,
@@ -60,7 +60,7 @@ def __(mo):
                        label=r"$\textnormal{Ridge Parameter}:$")
     in_conditioning = mo.ui.dropdown({"Low": 0.01, "Medium": 0.5, "High": 20},
                                      label=r"$\textnormal{Covariance Conditioning}:$",
-                                     value="Low")
+                                     value="High")
 
     form = mo.md('''
         **Experiment Config.**
