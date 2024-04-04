@@ -197,7 +197,7 @@ def __(
 ):
     part6 = part5 + 1
     if gt_compute:
-        gt_permutations_gen = GeneratorLen((rng.permutation(p) for _ in range(2**13)), 2**13)
+        gt_permutations_gen = GeneratorLen((rng.permutation(p) for _ in range(2**19)), 2**19)
         gt_permutations = mo.status.progress_bar(gt_permutations_gen)
         gt_results = ls_spa.ls_spa(X_train, X_test, y_train, y_test,
                                    perms=gt_permutations, tolerance=0.0)
@@ -429,7 +429,7 @@ def __(
     y_train,
 ):
     part14 = part13 + 1
-    permutohedron_qmc = MultivariateNormalQMC(np.zeros(p-1), seed=rng.choice(1000), 
+    permutohedron_qmc = MultivariateNormalQMC(np.zeros(p-1), seed=rng.choice(1000),
                                               inv_transform=False)
     permutohedron_qmc_permutations_gen = GeneratorLen((permutohedron_samples(permutohedron_qmc, 1).flatten() for _ in range(max_samples)), max_samples)
     permutohedron_qmc_permutations = mo.status.progress_bar(permutohedron_qmc_permutations_gen)
@@ -556,7 +556,7 @@ def __(
     y_train,
 ):
     part20 = part19 + 1
-    apermutohedron_qmc = MultivariateNormalQMC(np.zeros(p-1), seed=rng.choice(1000), 
+    apermutohedron_qmc = MultivariateNormalQMC(np.zeros(p-1), seed=rng.choice(1000),
                                               inv_transform=False)
     apermutohedron_qmc_permutations_gen = GeneratorLen((permutohedron_samples(apermutohedron_qmc, 1).flatten() for _ in range(max_samples//2)), max_samples//2)
     apermutohedron_qmc_permutations = mo.status.progress_bar(apermutohedron_qmc_permutations_gen)
@@ -885,7 +885,7 @@ def __(np, p):
             self.gen = gen
             self.length = length
 
-        def __len__(self): 
+        def __len__(self):
             return self.length
 
         def __iter__(self):
@@ -899,7 +899,7 @@ def __(np, p):
             self.last_sample = None
             self.next_call_is_direct = True
 
-        def __len__(self): 
+        def __len__(self):
             return self.length
 
         def __iter__(self):
