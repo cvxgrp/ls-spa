@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.3.1"
+__generated_with = "0.3.10"
 app = marimo.App()
 
 
@@ -144,15 +144,16 @@ def __(form):
 @app.cell
 def __(mo, np, part1):
     part2 = part1 + 1
-    rng = np.random.default_rng(42)
+    gt_rng = np.random.default_rng(42)
+    rng = np.random.default_rng(0)
     mo.md("Generating data...")
-    return part2, rng
+    return gt_rng, part2, rng
 
 
 @app.cell
-def __(gen_data, mo, part2, rng):
+def __(gen_data, gt_rng, mo, part2):
     part3 = part2 + 1
-    X_train, X_test, y_train, y_test, true_theta, cov = gen_data(rng)
+    X_train, X_test, y_train, y_test, true_theta, cov = gen_data(gt_rng)
     mo.md("Data generation complete.")
     return X_test, X_train, cov, part3, true_theta, y_test, y_train
 
@@ -186,18 +187,18 @@ def __(
     X_train,
     gt_compute,
     gt_location,
+    gt_rng,
     ls_spa,
     mo,
     np,
     p,
     part5,
-    rng,
     y_test,
     y_train,
 ):
     part6 = part5 + 1
     if gt_compute:
-        gt_permutations_gen = GeneratorLen((rng.permutation(p) for _ in range(2**19)), 2**19)
+        gt_permutations_gen = GeneratorLen((gt_rng.permutation(p) for _ in range(2**19)), 2**19)
         gt_permutations = mo.status.progress_bar(gt_permutations_gen)
         gt_results = ls_spa.ls_spa(X_train, X_test, y_train, y_test,
                                    perms=gt_permutations, tolerance=0.0)
