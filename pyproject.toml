@@ -6,13 +6,13 @@ authors = [
     { name = "Logan Bell", email = "20belllemail@gmail.com" },
     { name = "Nikhil Devanathan", email = "nikhil.devanathan@gmail.com" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
-    "numpy>=2.1.0,<3",
-    "scipy>=1.14.1,<2",
-    "pandas>=2.2.2,<3",
+    "numpy>=2.3.4,<3",
+    "scipy>=1.16.2,<2",
+    "pandas>=2.3.3,<3",
 ]
 
 [dependency-groups]
@@ -34,6 +34,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "ls_spa/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ls_spa"]
@@ -66,7 +69,7 @@ skip_covered = true
 # ---------------
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py311"
 line-length = 100
 extend-exclude = [
     ".git",
@@ -79,6 +82,7 @@ extend-exclude = [
     "__pycache__",
     "build",
     "dist",
+    "_version.py",
 ]
 fix = true
 show-fixes = true
