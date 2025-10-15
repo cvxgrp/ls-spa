@@ -48,4 +48,4 @@ repos:
           - --exit-non-zero-on-fix
           - --force-exclude
 
-exclude: 'notebooks/.*'
+exclude: 'notebooks/.*|data/.*'
