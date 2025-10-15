@@ -19,8 +19,6 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-uv-
-      - name: Setup dynamic versioning
-        run: uvx uv-dynamic-versioning
       - name: Install dependencies
         run: uv sync
       - name: Test

@@ -335,7 +335,7 @@ def square_shapley(
     y_norm_sq: float,
     perm: np.ndarray,
 ) -> np.ndarray:
-    """Estimates the Shapley attribution for a least-squares problem.
+    """Computes the performance lift of each feature for a given permutation.
 
     Args:
         X_train (np.ndarray): The training data.
@@ -343,7 +343,7 @@ def square_shapley(
         y_train (np.ndarray): The training labels.
         y_test (np.ndarray): The test labels.
         y_norm_sq (float): The squared norm of the test labels.
-        perm (np.ndarray): The permutations to use.
+        perm (np.ndarray): The permutation to use.
 
     Returns:
         np.ndarray: The lift vector.
@@ -398,14 +398,14 @@ def reduce_data(
 
 
 def error_estimates(rng: random.Generator, cov: np.ndarray) -> tuple[np.ndarray, float]:
-    """Estimates the error in the Shapley attribution.
+    """Estimates the error in the approximate Shapley attribution.
 
     Args:
         rng (random.Generator): The random number generator.
         cov (np.ndarray): The covariance matrix of the Shapley attribution.
 
     Returns:
-        tuple[np.ndarray, float]: The estimated error in the Shapley attribution.
+        tuple[np.ndarray, float]: The estimated error.
     """
     p = cov.shape[0]
     try:
