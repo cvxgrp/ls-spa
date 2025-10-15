@@ -44,8 +44,8 @@ repos:
         types: [python]
         args:
           - --select=F,E,B,S,PERF,TRY,I,T100
+          - --extend-ignore=TRY003
           - --exit-non-zero-on-fix
           - --force-exclude
-          - --config=pyproject.toml
 
 exclude: 'notebooks/.*'
