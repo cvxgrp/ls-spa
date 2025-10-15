@@ -70,7 +70,7 @@ class ShapleyResults:
         Shapley attribution: {attr_str}
         Estimated error in Shapley attribution: {self.overall_error:.2E}
 
-        Fitted coeficients with all features: {coefs_str}
+        Fitted coefficients with all features: {coefs_str}
         """
 
 
