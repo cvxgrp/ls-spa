@@ -23,6 +23,10 @@ dev = [
     "pytest>=8.4.2",
     "ruff>=0.14.0",
 ]
+notebook = [
+    "marimo>=0.17.0",
+    "matplotlib>=3.10.7",
+]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
