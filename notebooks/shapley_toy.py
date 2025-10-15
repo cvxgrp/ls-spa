@@ -12,7 +12,7 @@ def _(mo):
 
 @app.cell
 def _(mo):
-    mo.md(r"""### In this notebook, we use the data from the toy example in Section 2.5 of the paper "Efficient Shapley Performance Attribution for Least-Squares Regression" to demonstrate how Shapley values can be computed directly for a linear, least-squares model. We then demonstrate how LS-SPA can be used to generate the same Shapley attribution. In this specific case, we have a very small number of features, so it is feaible to compute the exact Shapley attribution. When the number of features exceeds 15, this is no longer the case. LS-SPA is able to accurately approximate Shapley attributions for linear least-squares models even when the number of features exceeds 1000.""")
+    mo.md(r"""### In this notebook, we use the data from the toy example in Section 2.5 of the paper "Efficient Shapley Performance Attribution for Least-Squares Regression" to demonstrate how Shapley values can be computed directly for a linear, least-squares model. We then demonstrate how LS-SPA can be used to generate the same Shapley attribution. In this specific case, we have a very small number of features, so it is feasible to compute the exact Shapley attribution. When the number of features exceeds 15, this is no longer the case. LS-SPA is able to accurately approximate Shapley attributions for linear least-squares models even when the number of features exceeds 1000.""")
     return
 
 
