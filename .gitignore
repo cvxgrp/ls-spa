@@ -1,5 +1,14 @@
+### Python template
+
+.idea
+.task
+.vscode
+.DS_Store
+.ruff_cache
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
+__marimo__/
 *.py[cod]
 *$py.class
 
@@ -77,7 +86,6 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-*/.ipynb_checkpoints
 
 # IPython
 profile_default/
@@ -100,15 +108,17 @@ ipython_config.py
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-poetry.lock
+#poetry.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
 #pdm.lock
 #   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
 #   in version control.
-#   https://pdm.fming.dev/#use-with-ide
+#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
 .pdm.toml
+.pdm-python
+.pdm-build/
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
@@ -158,8 +168,18 @@ cython_debug/
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+.idea/
 
-# Notebook results
-notebooks/data/
-notebooks/plots/
+# LaTeX intermediate files
+.aux
+.bbl
+.blg
+.fdb_latexmk
+.fls
+.log
+.out
+.toc
+.synctex.gz
+.xdv
+
+data/
