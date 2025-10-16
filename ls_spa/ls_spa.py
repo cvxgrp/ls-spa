@@ -29,7 +29,7 @@ import scipy as sp
 from numpy import random
 
 # The maximum number of features for which we can display the full attribution.
-CAN_DISPLAY_FULL_ATTR = 5
+MAX_ATTR_DISP = 5
 
 # The maximum number of features for which we can feasibly compute the exact Shapley values.
 MAX_FEAS_EXACT_FEATS = 9
@@ -52,15 +52,19 @@ class ShapleyResults:
         attr_str = ""
         coefs_str = ""
 
-        if len(self.attribution) <= CAN_DISPLAY_FULL_ATTR:
+        if len(self.attribution) <= MAX_ATTR_DISP:
             attr_str = "(" + "".join(f"{a:.2f}, " for a in self.attribution.flatten())[:-2] + ")"
             coefs_str = "(" + "".join(f"{c:.2f}, " for c in self.theta.flatten())[:-2] + ")"
         else:
             attr_str = (
-                "(" + "".join(f"{a:.2f}, " for a in self.attribution.flatten()[:5])[:-2] + ", ...)"
+                "("
+                + "".join(f"{a:.2f}, " for a in self.attribution.flatten()[:MAX_ATTR_DISP])[:-2]
+                + ", ...)"
             )
             coefs_str = (
-                "(" + "".join(f"{c:.2f}, " for c in self.theta.flatten()[:5])[:-2] + ", ...)"
+                "("
+                + "".join(f"{c:.2f}, " for c in self.theta.flatten()[:MAX_ATTR_DISP])[:-2]
+                + ", ...)"
             )
 
         return f"""
@@ -81,6 +85,11 @@ class SizeIncompatibleError(Exception):
         """Initializes the SizeIncompatibleError."""
         self.message = message
         super().__init__(self.message)
+
+
+# TODO(ndevanathan): remove this in the next major update
+# This is here for backwards compatibility
+SizeIncompatible = SizeIncompatibleError
 
 
 def validate_data(
@@ -410,7 +419,7 @@ def error_estimates(rng: random.Generator, cov: np.ndarray) -> tuple[np.ndarray,
     p = cov.shape[0]
     try:
         sample_diffs = rng.multivariate_normal(np.zeros(p), cov, size=2**10, method="cholesky")
-    except:  # noqa: E722
+    except (np.linalg.LinAlgError, ValueError):
         sample_diffs = rng.multivariate_normal(np.zeros(p), cov, size=2**10, method="svd")
     abs_diffs = np.abs(sample_diffs)
     norms = np.linalg.norm(sample_diffs, axis=1)

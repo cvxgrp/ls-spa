@@ -77,7 +77,6 @@ extend-exclude = [
     "notebooks",
     "paper",
     "data",
-    ".venv",
     "__marimo__",
     "__pycache__",
     "build",
