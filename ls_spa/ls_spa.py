@@ -22,17 +22,23 @@ Bell, Nikhil Devanathan, and Stephen Boyd.
 
 import itertools as it
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 import scipy as sp
 from numpy import random
 
+from ls_spa.qmc import argsort_samples, permutohedron_samples
+
 # The maximum number of features for which we can display the full attribution.
 MAX_ATTR_DISP = 5
 
 # The maximum number of features for which we can feasibly compute the exact Shapley values.
 MAX_FEAS_EXACT_FEATS = 9
+
+SAMPLERS = Literal["exact", "random", "argsort", "permutohedron"]
+PERM_TYPE = tuple[np.ndarray, ...] | np.ndarray | SAMPLERS
 
 
 @dataclass
@@ -85,11 +91,6 @@ class SizeIncompatibleError(Exception):
         """Initializes the SizeIncompatibleError."""
         self.message = message
         super().__init__(self.message)
-
-
-# TODO(ndevanathan): remove this in the next major update
-# This is here for backwards compatibility
-SizeIncompatible = SizeIncompatibleError
 
 
 def validate_data(
@@ -184,6 +185,47 @@ def merge_sample_cov(
     return adj_old_cov + adj_new_cov + delta
 
 
+def process_perms(
+    p: int, rng: random.Generator, max_samples: int, perms: PERM_TYPE | None
+) -> np.ndarray:
+    """Process the permutations.
+
+    Args:
+        p (int): The number of features.
+        rng (random.Generator): The random number generator.
+        max_samples (int): The maximum number of samples.
+        perms (PERM_TYPE | None): The permutations to use.
+
+    Raises:
+        ValueError: If the permutations are invalid.
+
+    Returns:
+        np.ndarray: The permutations.
+    """
+    match perms:
+        case "exact":
+            if p < MAX_FEAS_EXACT_FEATS:
+                return it.permutations(range(p))
+            raise ValueError(
+                f"Exact permutations are not available"
+                f" for more than {MAX_FEAS_EXACT_FEATS} features."
+            )
+        case "random":
+            return np.array([rng.permutation(p) for _ in range(max_samples)])
+        case "argsort":
+            return argsort_samples(p, max_samples, seed=rng.choice(1000))
+        case "permutohedron":
+            return permutohedron_samples(p, max_samples, seed=rng.choice(1000))
+        case None:
+            if p < MAX_FEAS_EXACT_FEATS:
+                return it.permutations(range(p))
+            return np.array([rng.permutation(p) for _ in range(max_samples)])
+        case _:
+            if isinstance(perms, (tuple, list)):
+                return np.array(perms)
+            return perms
+
+
 def ls_spa(
     X_train: np.ndarray | pd.DataFrame,
     X_test: np.ndarray | pd.DataFrame,
@@ -194,7 +236,7 @@ def ls_spa(
     batch_size: int = 2**8,
     tolerance: float = 1e-2,
     seed: int = 42,
-    perms: np.ndarray | None = None,
+    perms: PERM_TYPE | None = None,
     antithetical: bool = True,
     return_attribution_history: bool = False,
 ) -> ShapleyResults:
@@ -210,7 +252,7 @@ def ls_spa(
         batch_size (int): The number of samples to use in each batch.
         tolerance (float): The tolerance for the stopping criterion.
         seed (int): The seed for the random number generator.
-        perms (np.ndarray | None): The permutations to use. If None, the permutations are
+        perms (PERM_TYPE | None): The permutations to use. If None, the permutations are
             generated randomly.
         antithetical (bool): Whether to use antithetical sampling.
         return_attribution_history (bool): Whether to return the attribution history.
@@ -229,19 +271,13 @@ def ls_spa(
     validate_data(X_train, X_test, y_train, y_test)
     p = X_train.shape[1]
 
-    # If perms were not passed or are invalid, then generate our own. XXX this
-    # should throw an exception if invalid perms are passed, instead of
-    # silently doing our own thing.
     rng = random.default_rng(seed)
-    if perms is None:
-        if p < MAX_FEAS_EXACT_FEATS:
-            perms = it.permutations(range(p))
-            batch_size = 2**8
-            antithetical = False
-        else:
-            perms = (rng.permutation(p) for _ in range(max_samples))
-    else:
-        max_samples = 2**100
+    if perms is None and p < MAX_FEAS_EXACT_FEATS:
+        batch_size = 2**8
+        antithetical = False
+
+    perms = process_perms(p, rng, max_samples, perms)
+    max_samples = len(perms)
 
     # Compute the reduction
     y_test_norm_sq = np.linalg.norm(y_test) ** 2

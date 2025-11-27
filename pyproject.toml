@@ -96,6 +96,7 @@ ignore = [
     "INP001",    #Ignore INP001 (checks for missing __init__.py files)
     "PT",        #Ignore PT (pytest style conventions)
     "PLR0913",   #Ignore PLR0913 (checks for too many arguments in functions)
+    "PLR0911",   #Ignore PLR0911 (too many return statements)
     "N803",      #Ignore N803 (argument names must be snake_case)
     "N806",      #Ignore N806 (non-lowercase variable names in functions)
     "ERA001",    #Ignore ERA001 (checks for commented out code)
