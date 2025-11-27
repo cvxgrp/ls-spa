@@ -2,7 +2,6 @@
 
 from .ls_spa import (
     ShapleyResults,
-    SizeIncompatible,
     SizeIncompatibleError,
     error_estimates,
     ls_spa,

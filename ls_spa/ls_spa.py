@@ -27,6 +27,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 import scipy as sp
+from joblib import Parallel, delayed
 from numpy import random
 
 from ls_spa.qmc import argsort_samples, permutohedron_samples
@@ -226,6 +227,53 @@ def process_perms(
             return perms
 
 
+def _compute_lift(
+    perm: np.ndarray,
+    X_train_tilde: np.ndarray,
+    X_test_tilde: np.ndarray,
+    y_train_tilde: np.ndarray,
+    y_test_tilde: np.ndarray,
+    y_test_norm_sq: float,
+    antithetical: bool,
+) -> np.ndarray:
+    """Compute the lift for a single permutation.
+
+    Args:
+        perm: The permutation to use.
+        X_train_tilde: The reduced training data.
+        X_test_tilde: The reduced test data.
+        y_train_tilde: The reduced training labels.
+        y_test_tilde: The reduced test labels.
+        y_test_norm_sq: The squared norm of the test labels.
+        antithetical: Whether to use antithetical sampling.
+
+    Returns:
+        The lift vector.
+    """
+    perm_np = np.array(perm)
+    lift = square_shapley(
+        X_train_tilde,
+        X_test_tilde,
+        y_train_tilde,
+        y_test_tilde,
+        y_test_norm_sq,
+        perm_np,
+    )
+    if antithetical:
+        lift = (
+            lift
+            + square_shapley(
+                X_train_tilde,
+                X_test_tilde,
+                y_train_tilde,
+                y_test_tilde,
+                y_test_norm_sq,
+                perm_np[::-1],
+            )
+        ) / 2
+    return lift
+
+
 def ls_spa(
     X_train: np.ndarray | pd.DataFrame,
     X_test: np.ndarray | pd.DataFrame,
@@ -239,6 +287,7 @@ def ls_spa(
     perms: PERM_TYPE | None = None,
     antithetical: bool = True,
     return_attribution_history: bool = False,
+    n_jobs: int = 1,
 ) -> ShapleyResults:
     """Estimates the Shapley attribution for a least-squares problem.
 
@@ -256,6 +305,8 @@ def ls_spa(
             generated randomly.
         antithetical (bool): Whether to use antithetical sampling.
         return_attribution_history (bool): Whether to return the attribution history.
+        n_jobs (int): The number of parallel jobs to use. Use -1 to use all available
+            CPU cores. Default is 1 (sequential processing).
 
     Returns:
         A ShapleyResults object containing the Shapley attribution, the
@@ -277,7 +328,10 @@ def ls_spa(
         antithetical = False
 
     perms = process_perms(p, rng, max_samples, perms)
-    max_samples = len(perms)
+
+    # Convert to list for batching (handles iterators like it.permutations)
+    perms_list = list(perms)
+    max_samples = len(perms_list)
 
     # Compute the reduction
     y_test_norm_sq = np.linalg.norm(y_test) ** 2
@@ -289,7 +343,7 @@ def ls_spa(
         reg,
     )
 
-    # Iterate over the permutations to compute lifts
+    # Initialize accumulators for the Shapley attribution
     shapley_values = np.zeros(p)
     attribution_cov = np.zeros((p, p))
     attribution_errors = np.full(p, 0.0)
@@ -297,63 +351,64 @@ def ls_spa(
     error_history = np.zeros(0)
     attribution_history = np.zeros((0, p)) if return_attribution_history else None
 
+    # Iterate over permutations in batches
     i = 0
-    for perm in perms:
-        i += 1
-        do_mini_batch = True
+    for batch_start in range(0, max_samples, batch_size):
+        batch_end = min(batch_start + batch_size, max_samples)
+        batch_perms = perms_list[batch_start:batch_end]
 
-        # Compute the lift
-        perm_np = np.array(perm)
-        lift = square_shapley(
-            X_train_tilde,
-            X_test_tilde,
-            y_train_tilde,
-            y_test_tilde,
-            y_test_norm_sq,
-            perm_np,
-        )
-        if antithetical:
-            lift = (
-                lift
-                + square_shapley(
+        # Compute lifts for the batch (parallel or sequential)
+        if n_jobs == 1:
+            lifts = [
+                _compute_lift(
+                    perm,
                     X_train_tilde,
                     X_test_tilde,
                     y_train_tilde,
                     y_test_tilde,
                     y_test_norm_sq,
-                    perm_np[::-1],
+                    antithetical,
                 )
-            ) / 2
+                for perm in batch_perms
+            ]
+        else:
+            lifts = Parallel(n_jobs=n_jobs)(
+                delayed(_compute_lift)(
+                    perm,
+                    X_train_tilde,
+                    X_test_tilde,
+                    y_train_tilde,
+                    y_test_tilde,
+                    y_test_norm_sq,
+                    antithetical,
+                )
+                for perm in batch_perms
+            )
 
-        # Update the mean and biased sample covariance
-        attribution_cov = merge_sample_cov(
-            shapley_values,
-            lift,
-            attribution_cov,
-            np.zeros((p, p)),
-            i - 1,
-            1,
-        )
-        shapley_values = merge_sample_mean(shapley_values, lift, i - 1, 1)
-        if return_attribution_history:
-            attribution_history = np.vstack((attribution_history, shapley_values))
+        # Aggregate lifts sequentially (updates running mean and covariance)
+        for lift in lifts:
+            i += 1
+            attribution_cov = merge_sample_cov(
+                shapley_values,
+                lift,
+                attribution_cov,
+                np.zeros((p, p)),
+                i - 1,
+                1,
+            )
+            shapley_values = merge_sample_mean(shapley_values, lift, i - 1, 1)
+            if return_attribution_history:
+                attribution_history = np.vstack((attribution_history, shapley_values))
 
-        # Update the errors
-        if (i % batch_size == 0 or i == max_samples - 1) and p >= MAX_FEAS_EXACT_FEATS:
+        # Update errors after each batch
+        if p >= MAX_FEAS_EXACT_FEATS and i > 1:
             unbiased_cov = attribution_cov * i / (i - 1)
             attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
             error_history = np.append(error_history, overall_error)
-            do_mini_batch = False
 
             # Check the stopping criterion
             if overall_error < tolerance:
                 break
-
-    # Last mini-batch
-    if p >= MAX_FEAS_EXACT_FEATS and do_mini_batch:
-        unbiased_cov = attribution_cov * i / (i - 1)
-        attribution_errors, overall_error = error_estimates(rng, unbiased_cov / i)
-        error_history = np.append(error_history, overall_error)
 
     # Compute auxiliary information
     theta = np.linalg.lstsq(X_train_tilde, y_train_tilde, rcond=None)[0]
