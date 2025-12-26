@@ -1,32 +1,51 @@
+default_language_version:
+  python: "3.11"
+
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+  - repo: local
     hooks:
-      - id: check-toml
+      # Formatting
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        require_serial: true
+
+      # Security
+      - id: check-added-large-files
+        name: check-added-large-files
+        entry: uv run check-added-large-files
+        language: system
+      - id: detect-private-key
+        name: detect-private-key
+        entry: uv run detect-private-key
+        language: system
+        types: [text]
+
+      # Linting
+      - id: check-jsonschema
+        name: check-jsonschema
+        entry: uv run check-jsonschema
+        language: system
+        types: [json, yaml]
       - id: end-of-file-fixer
+        name: end-of-file-fixer
+        entry: uv run python -m pre_commit_hooks.end_of_file_fixer
+        language: system
       - id: trailing-whitespace
-
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.286'
-    hooks:
+        name: trailing-whitespace
+        entry: uv run python -m pre_commit_hooks.trailing_whitespace_fixer
+        language: system
       - id: ruff
-        args: [ --fix, --exit-non-zero-on-fix ]
+        name: ruff (critical subset)
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        args:
+          - --select=F,E,B,S,PERF,TRY,I,T100
+          - --extend-ignore=TRY003
+          - --exit-non-zero-on-fix
+          - --force-exclude
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.10.1
-    hooks:
-      - id: pyupgrade
-
-  - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.26.3
-    hooks:
-      - id: check-dependabot
-        args: ["--verbose"]
-      - id: check-github-workflows
-        args: ["--verbose"]
-exclude: 'notebooks/.*'
+exclude: 'notebooks/.*|data/.*'

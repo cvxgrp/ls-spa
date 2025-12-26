@@ -1,36 +1,130 @@
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-
-[tool.poetry]
+[project]
 name = "ls_spa"
-version = "0.0.0" # placeholder since we are using dynamic versioning
+dynamic = ["version"]
 description = "A package for efficient Shapley performance attribution for least-squares problems"
 authors = [
-    "Logan Bell <20belllemail@gmail.com>",
-    "Nikhil Devanathan <nikhil.devanathan@gmail.com>"
+    { name = "Logan Bell", email = "20belllemail@gmail.com" },
+    { name = "Nikhil Devanathan", email = "nikhil.devanathan@gmail.com" },
 ]
-license = "Apache-2.0"
+requires-python = ">=3.11"
 readme = "README.md"
+license = "Apache-2.0"
+dependencies = [
+    "numpy>=1.24,<3",
+    "scipy>=1.10,<2",
+    "pandas>=2.0,<3",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-numpy = "^2.1.0"
-scipy = "^1.14.1"
-pandas = "^2.2.2"
-pre-commit = "^3.8.0"
-pytest = "^8.3.2"
+[dependency-groups]
+dev = [
+    "check-jsonschema>=0.34.1",
+    "pre-commit>=4.3.0",
+    "pre-commit-hooks>=6.0.0",
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+]
+notebook = [
+    "marimo>=0.17.0",
+    "matplotlib>=3.8.0",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "ls_spa/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ls_spa"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.deptry]
+# see https://deptry.com/usage/#pep-621-dev-dependency-groups
+pep621_dev_dependency_groups = ["dev"]
+
+# ---------------
+# Testing
+# ---------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+branch = true
+source = ["ls_spa"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+# ---------------
+# Linting
+# ---------------
 
 [tool.ruff]
-line-length = 120
-ignore = [
-    "E722", # Do not use bare except
-    "F403", # Using * import
+target-version = "py311"
+line-length = 100
+extend-exclude = [
+    ".git",
+    ".venv",
+    "notebooks",
+    "paper",
+    "data",
+    "__marimo__",
+    "__pycache__",
+    "build",
+    "dist",
+    "_version.py",
 ]
+fix = true
+show-fixes = true
 
-[tool.black]
-line-length = 88
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",    #Ignore COM812 (missing trailing comma)
+    "D203",      #Ignore D203 (one blank line after class definition before docstring)
+    "D213",      #Ignore D213 (checks for multiline summary in second line of docstrings)
+    "EXE002",    #Ignore EXE002 (checks for shebang in executable python files)
+    "INP001",    #Ignore INP001 (checks for missing __init__.py files)
+    "PT",        #Ignore PT (pytest style conventions)
+    "PLR0913",   #Ignore PLR0913 (checks for too many arguments in functions)
+    "N803",      #Ignore N803 (argument names must be snake_case)
+    "N806",      #Ignore N806 (non-lowercase variable names in functions)
+    "ERA001",    #Ignore ERA001 (checks for commented out code)
+    "T201",      #Ignore T201 (bans print statements)
+    "C901",      #Ignore C901 (functions with too much indentation)
+    "EM101",     #Ignore EM101 (raw string in raise exception)
+    "EM102",     #Ignore EM102 (f-string in raise exception)
+    "TRY003",    #Ignore TRY003 (long exception messages that are not defined in the exception class)
+    "TD",        #Ignore TD (TODO format conventions)
+    "FBT",       #Ignore FBT (flake8 boolean trap (boolean args in functions))
+    "PLR0915",   #Ignore PLR0915 (too many statements in function)
+    "RET504",    #Ignore RET504 (assignment immediately before return)
+]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)?)$"
+
+# Docstring style configuration
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "S101"]
+"notebooks/*" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ls_spa"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

@@ -1,10 +1,17 @@
+"""Tests for the ls_spa module."""
+
 import unittest
+
 import numpy as np
-from ls_spa import ls_spa, ShapleyResults, merge_sample_mean, merge_sample_cov
+
+from ls_spa import ShapleyResults, ls_spa, merge_sample_cov, merge_sample_mean
 
 
 class TestOnlineStats(unittest.TestCase):
-    def setUp(self):
+    """Tests for the online statistics functions."""
+
+    def setUp(self) -> None:
+        """Set up the test fixtures."""
         rng = np.random.default_rng(128)
 
         n = 100
@@ -16,7 +23,8 @@ class TestOnlineStats(unittest.TestCase):
         S = A @ A.T
         self.X = rng.multivariate_normal(np.zeros(n), S, N)
 
-    def test_merge_sample_mean(self):
+    def test_merge_sample_mean(self) -> None:
+        """Test the merge_sample_mean function."""
         batch_1 = self.X[: self.old_N]
         batch_2 = self.X[self.old_N :]
 
@@ -26,7 +34,8 @@ class TestOnlineStats(unittest.TestCase):
         merged_mean = merge_sample_mean(old_mean, new_mean, self.old_N, self.new_N)
         np.testing.assert_almost_equal(full_mean, merged_mean)
 
-    def test_merge_sample_cov(self):
+    def test_merge_sample_cov(self) -> None:
+        """Test the merge_sample_cov function."""
         batch_1 = self.X[: self.old_N]
         batch_2 = self.X[self.old_N :]
 
@@ -35,14 +44,15 @@ class TestOnlineStats(unittest.TestCase):
         old_cov = np.cov(batch_1, rowvar=False, bias=True)
         new_cov = np.cov(batch_2, rowvar=False, bias=True)
         full_cov = np.cov(self.X, rowvar=False, bias=True)
-        merged_cov = merge_sample_cov(
-            old_mean, new_mean, old_cov, new_cov, self.old_N, self.new_N
-        )
+        merged_cov = merge_sample_cov(old_mean, new_mean, old_cov, new_cov, self.old_N, self.new_N)
         np.testing.assert_almost_equal(full_cov, merged_cov)
 
 
 class TestLSSPA(unittest.TestCase):
-    def setUp(self):
+    """Tests for the LS-SPA algorithm."""
+
+    def setUp(self) -> None:
+        """Set up the test fixtures."""
         rng = np.random.default_rng(128)
 
         n = 100
@@ -66,18 +76,14 @@ class TestLSSPA(unittest.TestCase):
         y_test_hard = self.X_test_hard @ hard_theta + rng.standard_normal(n)
         self.y_test_hard = y_test_hard - np.mean(y_test_hard)
 
-    def test_return_type(self):
-        # Test if the function returns an instance of ShapleyResults
-        result = ls_spa(
-            self.X_train_easy, self.X_test_easy, self.y_train_easy, self.y_test_easy
-        )
+    def test_return_type(self) -> None:
+        """Test if the function returns an instance of ShapleyResults."""
+        result = ls_spa(self.X_train_easy, self.X_test_easy, self.y_train_easy, self.y_test_easy)
         self.assertIsInstance(result, ShapleyResults)
 
-    def test_linear_regression(self):
-        # Test if LSSPA finds the right theta
-        theta_easy = np.linalg.lstsq(self.X_train_easy, self.y_train_easy, rcond=None)[
-            0
-        ]
+    def test_linear_regression(self) -> None:
+        """Test if the function finds the right best-fit coefficients."""
+        theta_easy = np.linalg.lstsq(self.X_train_easy, self.y_train_easy, rcond=None)[0]
         easy_results = ls_spa(
             self.X_train_easy,
             self.X_test_easy,
@@ -88,9 +94,7 @@ class TestLSSPA(unittest.TestCase):
         )
         np.testing.assert_almost_equal(theta_easy, easy_results.theta)
 
-        theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard, rcond=None)[
-            0
-        ]
+        theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard, rcond=None)[0]
         hard_results = ls_spa(
             self.X_train_hard,
             self.X_test_hard,
@@ -101,10 +105,9 @@ class TestLSSPA(unittest.TestCase):
         )
         np.testing.assert_almost_equal(theta_hard, hard_results.theta)
 
-    def test_rsquared(self):
-        theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard, rcond=None)[
-            0
-        ]
+    def test_rsquared(self) -> None:
+        """Test if the function computes the right R-squared statistic."""
+        theta_hard = np.linalg.lstsq(self.X_train_hard, self.y_train_hard, rcond=None)[0]
         y_hat = self.X_test_hard @ theta_hard
         tss = np.sum(self.y_test_hard**2)
         rss = np.sum((self.y_test_hard - y_hat) ** 2)
@@ -119,12 +122,10 @@ class TestLSSPA(unittest.TestCase):
         )
         np.testing.assert_almost_equal(r_squared, hard_results.r_squared)
 
-    def test_regularization(self):
-        # Test if the regularization parameter affects the output
+    def test_regularization(self) -> None:
+        """Test if the regularization parameter affects the output."""
         N, p = self.X_train_hard.shape
-        X_train_regular = np.vstack(
-            (self.X_train_hard / np.sqrt(N), np.sqrt(0.1) * np.eye(p))
-        )
+        X_train_regular = np.vstack((self.X_train_hard / np.sqrt(N), np.sqrt(0.1) * np.eye(p)))
         y_train_regular = np.concatenate((self.y_train_hard / np.sqrt(N), np.zeros(p)))
         theta_regular = np.linalg.lstsq(X_train_regular, y_train_regular, rcond=None)[0]
         result_regular = ls_spa(
@@ -138,8 +139,8 @@ class TestLSSPA(unittest.TestCase):
         )
         np.testing.assert_almost_equal(theta_regular, result_regular.theta)
 
-    def test_random_seed_consistency(self):
-        # Test if using the same seed produces consistent results
+    def test_random_seed_consistency(self) -> None:
+        """Test if using the same seed produces consistent results."""
         result1 = ls_spa(
             self.X_train_hard,
             self.X_test_hard,
@@ -160,16 +161,15 @@ class TestLSSPA(unittest.TestCase):
         )
         np.testing.assert_almost_equal(result1.attribution, result2.attribution)
 
-    def test_correctness_easy(self):
+    def test_correctness_easy(self) -> None:
+        """Test if the function computes the right Shapley attribution for an easy problem."""
         p = self.X_train_easy.shape[1]
         proposal = np.zeros(p)
         for i in range(p):
             with_p = self.X_train_easy[:, 0 : i + 1]
             without_p = self.X_train_easy[:, 0:i]
             theta_with_p = np.linalg.lstsq(with_p, self.y_train_easy, rcond=None)[0]
-            theta_without_p = np.linalg.lstsq(without_p, self.y_train_easy, rcond=None)[
-                0
-            ]
+            theta_without_p = np.linalg.lstsq(without_p, self.y_train_easy, rcond=None)[0]
             y_hat_with_p = self.X_test_easy[:, 0 : i + 1] @ theta_with_p
             y_hat_without_p = self.X_test_easy[:, 0:i] @ theta_without_p
             tss = np.sum(self.y_test_easy**2)
