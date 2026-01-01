@@ -44,7 +44,74 @@ PERM_TYPE = tuple[np.ndarray, ...] | np.ndarray | SAMPLERS
 
 @dataclass
 class ShapleyResults:
-    """Contains the results of the LS-SPA algorithm."""
+    """Results from the LS-SPA (Least Squares Shapley Performance Attribution) algorithm.
+
+    This dataclass contains the Shapley attribution values for each feature in a
+    least-squares regression problem, along with auxiliary information about the
+    fitted model and estimation quality.
+
+    Attributes:
+        attribution : np.ndarray
+            The Shapley attribution values for each feature, shape (p,) where p is the
+            number of features. The i-th entry represents feature i's contribution to
+            the out-of-sample R^2. The sum of all attribution values equals the overall
+            R^2 of the model with all features.
+        theta : np.ndarray
+            The fitted regression coefficients with all features included, shape (p,).
+            These are the least-squares coefficients obtained from regressing y_train
+            on X_train (with regularization if specified).
+        overall_error : float
+            The estimated error (95th percentile of L2 norm) in the Shapley attribution
+            vector. This provides a confidence bound on the distance between the
+            estimated and true Shapley values. Only meaningful when using approximate
+            (not exact) computation.
+        attribution_errors : np.ndarray
+            The estimated error (95th percentile) for each individual feature's
+            attribution, shape (p,). The i-th entry gives a confidence bound on how
+            far the i-th attribution value is from its true value. Only meaningful
+            when using approximate computation.
+        r_squared : float
+            The out-of-sample R^2 with all features included. This is the proportion
+            of variance in y_test explained by the model fitted on X_train and y_train.
+            Note: this can be negative if the model performs worse than the null model.
+        error_history : np.ndarray | None
+            The overall error estimate after each batch of permutations, shape (n_batches,).
+            Useful for diagnosing convergence. None if exact computation was used or if
+            only one batch was processed.
+        attribution_history : np.ndarray | None
+            The running estimate of the attribution values after each permutation,
+            shape (n_samples, p). Only populated if `return_attribution_history=True`
+            was passed to `ls_spa`, otherwise None. Useful for analyzing convergence
+            behavior and creating diagnostic plots.
+
+    Methods:
+        __repr__ : str
+            Returns a formatted summary of the results including the number of features,
+            out-of-sample R^2, Shapley attribution values, estimation error, and fitted
+            coefficients.
+
+    Examples:
+        After running LS-SPA, you can access the results as follows:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test)
+        >>> results.attribution  # Shapley values for each feature
+        array([0.15, 0.45, 0.22, 0.08])
+        >>> results.r_squared  # Overall out-of-sample R^2
+        0.90
+        >>> results.overall_error  # Estimation error
+        0.005
+        >>> print(results)  # Pretty-printed summary
+
+        You can also examine convergence if you requested the history:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test,
+        ...                  return_attribution_history=True)
+        >>> import matplotlib.pyplot as plt
+        >>> plt.plot(results.attribution_history)
+        >>> plt.xlabel('Permutation')
+        >>> plt.ylabel('Attribution Value')
+        >>> plt.title('Convergence of Shapley Attributions')
+    """
 
     attribution: np.ndarray
     theta: np.ndarray
@@ -100,16 +167,20 @@ def validate_data(
     y_train: np.ndarray,
     y_test: np.ndarray,
 ) -> None:
-    """Validates the data. Raises an exception if the data is incompatible.
+    """Validate that input data dimensions are compatible for LS-SPA computation.
+
+    Checks that X_train and X_test have the same number of features, that X and y
+    dimensions match within train/test sets, and that the number of features does
+    not exceed the number of training samples (required for least-squares).
 
     Args:
-        X_train (np.ndarray): The training data.
-        X_test (np.ndarray): The test data.
-        y_train (np.ndarray): The training labels.
-        y_test (np.ndarray): The test labels.
+        X_train (np.ndarray): Training feature matrix, shape (n_train, p).
+        X_test (np.ndarray): Test feature matrix, shape (n_test, p).
+        y_train (np.ndarray): Training target vector, shape (n_train,).
+        y_test (np.ndarray): Test target vector, shape (n_test,).
 
     Raises:
-        SizeIncompatibleError: If the data is incompatible.
+        SizeIncompatibleError: If dimensions are incompatible.
     """
     if X_train.shape[1] != X_test.shape[1]:
         raise SizeIncompatibleError(
@@ -140,16 +211,19 @@ def merge_sample_mean(
     old_N: int,
     new_N: int,
 ) -> np.ndarray:
-    """Merges the means of two samples.
+    """Merge means from two samples using weighted averaging.
+
+    Implements the online algorithm for combining sample means from two batches
+    of data. Used to maintain running mean estimates during Monte Carlo sampling.
 
     Args:
-        old_mean (np.ndarray): The old mean.
-        new_mean (np.ndarray): The new mean.
-        old_N (int): The number of old samples.
-        new_N (int): The number of new samples.
+        old_mean (np.ndarray): Mean of the first sample, shape (p,).
+        new_mean (np.ndarray): Mean of the second sample, shape (p,).
+        old_N (int): Number of observations in the first sample.
+        new_N (int): Number of observations in the second sample.
 
     Returns:
-        np.ndarray: The merged mean.
+        np.ndarray: Combined mean of both samples, shape (p,).
     """
     N = old_N + new_N
     adj_old_mean = (old_N / N) * old_mean
@@ -165,18 +239,22 @@ def merge_sample_cov(
     old_N: int,
     new_N: int,
 ) -> np.ndarray:
-    """Merges the covariance matrices of two samples.
+    """Merge covariance matrices from two samples using parallel algorithm.
+
+    Implements the parallel algorithm for combining sample covariances from two
+    batches of data. Accounts for the shift in means between batches. Used to
+    maintain running covariance estimates during Monte Carlo sampling.
 
     Args:
-        old_mean (np.ndarray): The old mean.
-        new_mean (np.ndarray): The new mean.
-        old_cov (np.ndarray): The old covariance matrix.
-        new_cov (np.ndarray): The new covariance matrix.
-        old_N (int): The number of old samples.
-        new_N (int): The number of new samples.
+        old_mean (np.ndarray): Mean of the first sample, shape (p,).
+        new_mean (np.ndarray): Mean of the second sample, shape (p,).
+        old_cov (np.ndarray): Covariance of the first sample, shape (p, p).
+        new_cov (np.ndarray): Covariance of the second sample, shape (p, p).
+        old_N (int): Number of observations in the first sample.
+        new_N (int): Number of observations in the second sample.
 
     Returns:
-        np.ndarray: The merged covariance matrix.
+        np.ndarray: Combined covariance of both samples, shape (p, p).
     """
     N = old_N + new_N
     mean_diff = old_mean - new_mean
@@ -189,19 +267,26 @@ def merge_sample_cov(
 def process_perms(
     p: int, rng: random.Generator, max_samples: int, perms: PERM_TYPE | None
 ) -> np.ndarray:
-    """Process the permutations.
+    """Process and generate feature permutations based on the specified method.
+
+    Handles different permutation generation strategies including exact enumeration,
+    random sampling, and quasi-Monte Carlo methods. Validates that exact computation
+    is only requested for feasible problem sizes.
 
     Args:
-        p (int): The number of features.
-        rng (random.Generator): The random number generator.
-        max_samples (int): The maximum number of samples.
-        perms (PERM_TYPE | None): The permutations to use.
+        p (int): Number of features.
+        rng (random.Generator): NumPy random number generator for sampling.
+        max_samples (int): Maximum number of permutations to generate.
+        perms (PERM_TYPE | None): Permutation specification - either a string
+            ("exact", "random", "argsort", "permutohedron"), a custom array of
+            permutations, or None for automatic selection.
 
     Raises:
-        ValueError: If the permutations are invalid.
+        ValueError: If exact permutations are requested for p >= 9.
 
     Returns:
-        np.ndarray: The permutations.
+        np.ndarray: Array or iterator of permutations, where each permutation
+            is a 1D array of indices [0, 1, ..., p-1] in some order.
     """
     match perms:
         case "exact":
@@ -236,19 +321,24 @@ def _compute_lift(
     y_test_norm_sq: float,
     antithetical: bool,
 ) -> np.ndarray:
-    """Compute the lift for a single permutation.
+    """Compute the Shapley lift vector for a single permutation.
+
+    This is the core computation for each Monte Carlo sample. Evaluates the
+    performance lift along a feature ordering and optionally applies antithetical
+    sampling (averaging with the reversed permutation) for variance reduction.
 
     Args:
-        perm: The permutation to use.
-        X_train_tilde: The reduced training data.
-        X_test_tilde: The reduced test data.
-        y_train_tilde: The reduced training labels.
-        y_test_tilde: The reduced test labels.
-        y_test_norm_sq: The squared norm of the test labels.
-        antithetical: Whether to use antithetical sampling.
+        perm: Feature permutation to evaluate, shape (p,).
+        X_train_tilde: Reduced training feature matrix, shape (p, p).
+        X_test_tilde: Reduced test feature matrix, shape (n_test, p).
+        y_train_tilde: Reduced training target vector, shape (p,).
+        y_test_tilde: Reduced test target vector, shape (n_test,).
+        y_test_norm_sq: Squared L2 norm of the original test target vector.
+        antithetical: Whether to apply antithetical sampling with reversed permutation.
 
     Returns:
-        The lift vector.
+        np.ndarray: Lift vector representing each feature's marginal contribution
+            to R^2 along this ordering, shape (p,).
     """
     perm_np = np.array(perm)
     lift = square_shapley(
@@ -289,30 +379,211 @@ def ls_spa(
     return_attribution_history: bool = False,
     n_jobs: int = 1,
 ) -> ShapleyResults:
-    """Estimates the Shapley attribution for a least-squares problem.
+    r"""Estimate Shapley performance attribution for least-squares regression.
 
-    Args:
-        X_train (np.ndarray | pd.DataFrame): The training data.
-        X_test (np.ndarray | pd.DataFrame): The test data.
-        y_train (np.ndarray | pd.Series): The training labels.
-        y_test (np.ndarray | pd.Series): The test labels.
-        reg (float): The regularization parameter.
-        max_samples (int): The maximum number of samples.
-        batch_size (int): The number of samples to use in each batch.
-        tolerance (float): The tolerance for the stopping criterion.
-        seed (int): The seed for the random number generator.
-        perms (PERM_TYPE | None): The permutations to use. If None, the permutations are
-            generated randomly.
-        antithetical (bool): Whether to use antithetical sampling.
-        return_attribution_history (bool): Whether to return the attribution history.
-        n_jobs (int): The number of parallel jobs to use. Use -1 to use all available
-            CPU cores. Default is 1 (sequential processing).
+    This function computes Shapley values that attribute the out-of-sample R^2
+    to individual features in a least-squares regression problem. The Shapley
+    value for each feature represents its average marginal contribution to the
+    model performance across all possible orderings of features.
+
+    The implementation uses an efficient algorithm that avoids explicitly
+    computing models for all feature subsets, making it feasible for problems
+    with many features. For small numbers of features (< 9), exact Shapley values
+    are computed. For larger problems, Monte Carlo estimation is used with
+    adaptive stopping based on the error tolerance.
+
+    Parameters:
+        X_train : np.ndarray or pd.DataFrame
+            Training feature matrix of shape (n_train, p) where n_train is the number
+            of training samples and p is the number of features. If a DataFrame is
+            provided, it will be converted to a NumPy array.
+        X_test : np.ndarray or pd.DataFrame
+            Test feature matrix of shape (n_test, p). Must have the same number of
+            features as X_train. Used to compute out-of-sample performance.
+        y_train : np.ndarray or pd.Series
+            Training target vector of shape (n_train,). Used to fit the regression
+            models.
+        y_test : np.ndarray or pd.Series
+            Test target vector of shape (n_test,). Used to compute out-of-sample
+            performance (R^2) for each feature subset.
+        reg : float, optional, default: 0.0
+            Ridge regularization parameter (lambda). The regularization term added
+            to the least-squares objective is `reg * ||theta||^2`. Use reg > 0 to
+            improve numerical stability or when features are nearly collinear.
+        max_samples : int, optional, default: 8192
+            Maximum number of feature permutations to sample. Only used when p >= 9
+            (otherwise exact computation is performed). Larger values give more
+            accurate estimates but take longer. The algorithm may use fewer samples
+            if the tolerance criterion is met earlier.
+        batch_size : int, optional, default: 256
+            Number of permutations to process before checking the stopping criterion.
+            Smaller batches allow earlier termination but increase overhead from
+            error estimation. Typical values are 128-512.
+        tolerance : float, optional, default: 0.01
+            Stopping criterion for the overall error estimate. The algorithm stops
+            when the estimated 95th percentile L2 error in the Shapley attribution
+            vector falls below this threshold. Only used for approximate (p >= 9)
+            computation.
+        seed : int, optional, default: 42
+            Random seed for reproducibility. Controls the random number generator
+            used for sampling permutations and estimating errors.
+        perms : str or np.ndarray or tuple of np.ndarray or None, optional, default: None
+            Specifies how to generate feature permutations. Options are:
+
+            - None (default): Automatically selects "exact" if p < 9, otherwise "random"
+            - "exact": Enumerate all p! permutations (only feasible for p < 9)
+            - "random": Uniformly random permutations sampled with replacement
+            - "argsort": Low-discrepancy quasi-Monte Carlo permutations using argsort
+              of random uniforms. Often converges faster than "random".
+            - "permutohedron": Low-discrepancy permutations from the permutohedron
+              lattice. Can provide better coverage of the permutation space.
+            - np.ndarray: Custom array of permutations, shape (n_perms, p), where
+              each row is a permutation of [0, 1, ..., p-1]
+            - tuple or list: Sequence of permutations (each a 1D array or list),
+              will be converted to an array
+
+            The "argsort" and "permutohedron" options implement quasi-Monte Carlo
+            methods that can provide better convergence than "random" sampling.
+        antithetical : bool, optional, default: True
+            Whether to use antithetical (paired) sampling. For each permutation π,
+            also evaluate the reversed permutation π[::-1] and average the results.
+            This reduces variance and typically improves convergence. Automatically
+            set to False when using exact computation.
+        return_attribution_history : bool, optional, default: False
+            Whether to track and return the attribution estimate after each permutation.
+            If True, the `attribution_history` field in the returned ShapleyResults
+            will contain an array of shape (n_samples, p) showing convergence. Useful
+            for creating diagnostic plots but increases memory usage.
+        n_jobs : int, optional, default: 1
+            Number of parallel jobs for computing permutation samples. Use -1 to
+            use all available CPU cores. Parallelization is most beneficial for
+            larger batch sizes and when p is large. For small p or batch_size,
+            overhead may outweigh benefits.
 
     Returns:
-        A ShapleyResults object containing the Shapley attribution, the
-        estimated error in the Shapley attribution, the fitted coefficients
-        with all features, the out-of-sample R^2 with all features, and
-        optionally the attribution history and the error history.
+        ShapleyResults
+            A dataclass containing the following fields:
+
+            - `attribution` : Shapley values for each feature (shape (p,))
+            - `theta` : Fitted regression coefficients with all features (shape (p,))
+            - `overall_error` : Estimated L2 error in attribution vector (float)
+            - `attribution_errors` : Estimated error for each feature (shape (p,))
+            - `r_squared` : Out-of-sample R^2 with all features (float)
+            - `error_history` : Error estimates after each batch (array or None)
+            - `attribution_history` : Attribution estimates over time (array or None)
+
+    Raises:
+        SizeIncompatibleError
+            If the input data dimensions are incompatible (e.g., X_train and X_test
+            have different numbers of features, or X_train has more features than
+            samples).
+        ValueError
+            If "exact" permutations are requested for p >= 9.
+
+    See Also:
+        ShapleyResults : The return type containing detailed results and usage examples.
+
+    Notes:
+        The Shapley value is defined as the average marginal contribution of a feature
+        across all possible orderings of features. For feature i:
+
+        .. math::
+            \phi_i = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!(p-|S|-1)!}{p!}
+                      [R^2(S \cup \{i\}) - R^2(S)]
+
+        where N is the set of all features, S is a subset not containing i, R^2(S)
+        is the out-of-sample R^2 using only features in S, and p is the total number
+        of features.
+
+        The algorithm efficiently computes Shapley values by evaluating performance
+        along random feature orderings (permutations) rather than enumerating all
+        2^p feature subsets. This reduces complexity from O(2^p) to O(p^2 * K) where
+        K is the number of permutations.
+
+    References:
+        .. [1] Bell, L., Devanathan, N., & Boyd, S. (2023). Efficient Shapley Performance
+           Attribution for Least-Squares Regression. arXiv:2310.19245.
+
+    Examples:
+        Basic usage with synthetic data:
+
+        >>> import numpy as np
+        >>> from ls_spa import ls_spa
+        >>>
+        >>> # Generate synthetic data
+        >>> np.random.seed(0)
+        >>> n_train, n_test, p = 100, 50, 5
+        >>> X_train = np.random.randn(n_train, p)
+        >>> X_test = np.random.randn(n_test, p)
+        >>> true_coef = np.array([2.0, -1.0, 0.5, 0.0, 1.5])
+        >>> y_train = X_train @ true_coef + 0.1 * np.random.randn(n_train)
+        >>> y_test = X_test @ true_coef + 0.1 * np.random.randn(n_test)
+        >>>
+        >>> # Compute Shapley attributions
+        >>> results = ls_spa(X_train, X_test, y_train, y_test)
+        >>> print(f"R^2: {results.r_squared:.3f}")
+        >>> print(f"Attributions: {results.attribution}")
+
+        Using ridge regularization:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test, reg=0.1)
+
+        With many features, control the estimation accuracy:
+
+        >>> n_train, n_test, p = 200, 100, 50
+        >>> X_train = np.random.randn(n_train, p)
+        >>> X_test = np.random.randn(n_test, p)
+        >>> y_train = X_train @ np.random.randn(p) + 0.5 * np.random.randn(n_train)
+        >>> y_test = X_test @ np.random.randn(p) + 0.5 * np.random.randn(n_test)
+        >>>
+        >>> # Use more samples for higher accuracy
+        >>> results = ls_spa(X_train, X_test, y_train, y_test,
+        ...                  max_samples=10000, tolerance=0.005)
+        >>> print(f"Estimation error: {results.overall_error:.4f}")
+
+        Using quasi-Monte Carlo for faster convergence:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test,
+        ...                  perms="argsort", max_samples=5000)
+
+        Visualizing convergence:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test,
+        ...                  return_attribution_history=True)
+        >>> import matplotlib.pyplot as plt
+        >>> plt.figure(figsize=(10, 6))
+        >>> for i in range(min(5, p)):  # Plot first 5 features
+        ...     plt.plot(results.attribution_history[:, i], label=f'Feature {i}')
+        >>> plt.xlabel('Permutation')
+        >>> plt.ylabel('Attribution Value')
+        >>> plt.legend()
+        >>> plt.title('Convergence of Shapley Attributions')
+        >>> plt.show()
+
+        Using custom permutations:
+
+        >>> # Provide specific permutations to evaluate
+        >>> custom_perms = np.array([
+        ...     [0, 1, 2, 3, 4],
+        ...     [4, 3, 2, 1, 0],
+        ...     [2, 0, 4, 1, 3]
+        ... ])
+        >>> results = ls_spa(X_train[:100, :5], X_test[:50, :5],
+        ...                  y_train[:100], y_test[:50], perms=custom_perms)
+
+        Parallel computation for large problems:
+
+        >>> results = ls_spa(X_train, X_test, y_train, y_test,
+        ...                  n_jobs=-1)  # Use all CPU cores
+
+        Working with pandas DataFrames:
+
+        >>> import pandas as pd
+        >>> df_train = pd.DataFrame(X_train, columns=[f'feat_{i}' for i in range(p)])
+        >>> df_test = pd.DataFrame(X_test, columns=[f'feat_{i}' for i in range(p)])
+        >>> y_train_series = pd.Series(y_train, name='target')
+        >>> y_test_series = pd.Series(y_test, name='target')
+        >>> results = ls_spa(df_train, df_test, y_train_series, y_test_series)
     """
     # Convert data into NumPy arrays.
     X_train = np.array(X_train)
@@ -435,18 +706,24 @@ def square_shapley(
     y_norm_sq: float,
     perm: np.ndarray,
 ) -> np.ndarray:
-    """Computes the performance lift of each feature for a given permutation.
+    """Compute marginal R^2 contributions for each feature along a given ordering.
+
+    This is the core algorithmic routine that efficiently computes the performance
+    lift (change in out-of-sample R^2) when adding each feature in the specified
+    order. Uses QR decomposition to avoid repeatedly solving least-squares problems.
 
     Args:
-        X_train (np.ndarray): The training data.
-        X_test (np.ndarray): The test data.
-        y_train (np.ndarray): The training labels.
-        y_test (np.ndarray): The test labels.
-        y_norm_sq (float): The squared norm of the test labels.
-        perm (np.ndarray): The permutation to use.
+        X_train (np.ndarray): Training feature matrix, shape (p, p).
+        X_test (np.ndarray): Test feature matrix, shape (n_test, p).
+        y_train (np.ndarray): Training target vector, shape (p,).
+        y_test (np.ndarray): Test target vector, shape (n_test,).
+        y_norm_sq (float): Squared L2 norm of y_test.
+        perm (np.ndarray): Feature ordering/permutation to evaluate, shape (p,).
 
     Returns:
-        np.ndarray: The lift vector.
+        np.ndarray: Lift vector where entry i is the R^2 gain from adding feature i
+            (in its original index) to the feature subset that precedes it in the
+            permutation, shape (p,).
     """
     p, _ = X_train.shape
     Q, R = np.linalg.qr(X_train[:, perm])
@@ -471,17 +748,24 @@ def reduce_data(
     y_test: np.ndarray,
     reg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Reduces the data to a smaller problem.
+    """Reduce the regression problem to canonical form via QR decomposition.
+
+    Applies ridge regularization (if specified) and performs QR decompositions
+    to reduce the problem to a smaller, equivalent form. This preprocessing step
+    significantly speeds up the repeated least-squares computations required for
+    Shapley value estimation.
 
     Args:
-        X_train (np.ndarray): The training data.
-        X_test (np.ndarray): The test data.
-        y_train (np.ndarray): The training labels.
-        y_test (np.ndarray): The test labels.
-        reg (float): The regularization parameter.
+        X_train (np.ndarray): Training feature matrix, shape (n_train, p).
+        X_test (np.ndarray): Test feature matrix, shape (n_test, p).
+        y_train (np.ndarray): Training target vector, shape (n_train,).
+        y_test (np.ndarray): Test target vector, shape (n_test,).
+        reg (float): Ridge regularization parameter (lambda).
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The reduced data.
+        tuple: (X_train_tilde, X_test_tilde, y_train_tilde, y_test_tilde) where
+            X_train_tilde has shape (p, p), X_test_tilde has shape (n_test, p),
+            y_train_tilde has shape (p,), and y_test_tilde has shape (n_test,).
     """
     N, p = X_train.shape
 
@@ -498,14 +782,20 @@ def reduce_data(
 
 
 def error_estimates(rng: random.Generator, cov: np.ndarray) -> tuple[np.ndarray, float]:
-    """Estimates the error in the approximate Shapley attribution.
+    """Estimate confidence bounds on Shapley attribution errors via sampling.
+
+    Uses the estimated covariance matrix of the Shapley values to generate samples
+    from the approximate distribution of estimation errors. Computes 95th percentile
+    bounds for both individual feature attributions and the overall L2 error.
 
     Args:
-        rng (random.Generator): The random number generator.
-        cov (np.ndarray): The covariance matrix of the Shapley attribution.
+        rng (random.Generator): NumPy random number generator.
+        cov (np.ndarray): Estimated covariance matrix of Shapley values, shape (p, p).
 
     Returns:
-        tuple[np.ndarray, float]: The estimated error.
+        tuple: (attribution_errors, overall_error) where attribution_errors is an
+            array of per-feature error estimates (shape (p,)) and overall_error is
+            the 95th percentile L2 norm of the error vector (float).
     """
     p = cov.shape[0]
     try:

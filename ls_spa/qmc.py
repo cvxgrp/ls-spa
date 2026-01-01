@@ -5,15 +5,18 @@ from scipy.stats.qmc import MultivariateNormalQMC, Sobol
 
 
 def permutohedron_samples(p: int, num_perms: int, seed: int = 42) -> np.ndarray:
-    """Sample on surface of sphere.
+    """Generate quasi-Monte Carlo permutations via permutohedron projection.
+
+    Samples points on the (p-1)-dimensional unit sphere using QMC, then projects
+    them onto the permutohedron to obtain low-discrepancy permutations.
 
     Args:
-        p (int): The number of features.
-        num_perms (int): The number of permutations to sample.
-        seed (int, optional): The seed for the random number generator. Defaults to 42.
+        p (int): Number of features.
+        num_perms (int): Number of permutations to generate.
+        seed (int, optional): Random seed for QMC sampler. Defaults to 42.
 
     Returns:
-        np.ndarray: The permutations.
+        np.ndarray: Array of permutations, shape (num_perms, p).
     """
     qmc = MultivariateNormalQMC(np.zeros(p - 1), seed=seed, inv_transform=False)
     samples = qmc.random(num_perms)
@@ -29,15 +32,18 @@ def permutohedron_samples(p: int, num_perms: int, seed: int = 42) -> np.ndarray:
 
 
 def argsort_samples(p: int, num_perms: int, seed: int = 42) -> np.ndarray:
-    """Sample on surface of sphere.
+    """Generate quasi-Monte Carlo permutations via argsort of Sobol sequence.
+
+    Samples low-discrepancy points from the Sobol sequence and converts them to
+    permutations by sorting (argsort) each sample.
 
     Args:
-        p (int): The number of features.
-        num_perms (int): The number of permutations to sample.
-        seed (int, optional): The seed for the random number generator. Defaults to 42.
+        p (int): Number of features.
+        num_perms (int): Number of permutations to generate.
+        seed (int, optional): Random seed for Sobol sampler. Defaults to 42.
 
     Returns:
-        np.ndarray: The permutations.
+        np.ndarray: Array of permutations, shape (num_perms, p).
     """
     qmc = Sobol(p, seed=seed)
     samples = qmc.random(num_perms)
