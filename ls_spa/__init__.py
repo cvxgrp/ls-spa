@@ -13,7 +13,6 @@ from .ls_spa import (
 
 __all__ = [
     "ShapleyResults",
-    "SizeIncompatible",
     "SizeIncompatibleError",
     "error_estimates",
     "ls_spa",
