@@ -186,6 +186,7 @@ class TestLSSPA(unittest.TestCase):
             self.y_test_easy,
             max_samples=256 * 256,
             batch_size=256,
+            n_jobs=-1,
         )
         np.testing.assert_almost_equal(proposal, easy_results.attribution)
 

@@ -33,6 +33,7 @@ to the top of your Python file.
 - `numpy`
 - `scipy`
 - `pandas`
+- `joblib`
 
 Optional dependencies are
 
@@ -51,14 +52,14 @@ Shapley attribution of the out-of-sample $R^2$ on your data by executing
 attrs = ls_spa(X_train, X_test, y_train, y_test).attribution
 ```
 
-`attrs` will be a JAX vector containing the Shapley values of your features.
+`attrs` will be a NumPy array containing the Shapley values of your features.
 The `ls_spa` function computes Shapley values for the given data using
 the LS-SPA method described in the companion paper. It takes arguments:
 
-- `X_train`: Training feature matrix.
-- `X_test`: Testing feature matrix.
-- `y_train`: Training response vector.
-- `y_test`: Testing response vector.
+- `X_train`: Training feature matrix (NumPy array or pandas DataFrame).
+- `X_test`: Testing feature matrix (NumPy array or pandas DataFrame).
+- `y_train`: Training response vector (NumPy array or pandas Series).
+- `y_test`: Testing response vector (NumPy array or pandas Series).
 
 ## Hello world
 
@@ -104,28 +105,32 @@ on the same data.
 
 `ls_spa` takes the optional arguments:
 
-- `reg`: Regularization parameter (Default `0`).
-- `method`: Permutation sampling method. Options include `'random'`,
-  `'permutohedron'`, `'argsort'`, and `'exact'`. If `None`, `'argsort'` is used
-  if the number of features is greater than 10; otherwise, `'exact'` is used.
-- `batch_size`: Number of permutations in each batch (Default `2**7`).
-- `num_batches`: Maximum number of batches (Default `2**7`).
-- `tolerance`: Convergence tolerance for the Shapley values (Default `1e-2`).
+- `reg`: Ridge regularization parameter (Default `0.0`).
+- `max_samples`: Maximum number of feature permutations to sample (Default `8192`).
+- `batch_size`: Number of permutations to process per batch (Default `256`).
+- `tolerance`: Stopping criterion for estimation error (Default `0.01`).
 - `seed`: Seed for random number generation (Default `42`).
-- `return_history`: Flag to determine whether to return the history of error estimates and attributions for each feature chain (Default `False`).
+- `perms`: Permutation sampling method (Default `None`). Options include:
+  - `None`: Auto-select `"exact"` for p < 9 features, otherwise `"random"`
+  - `"exact"`: Enumerate all permutations (only feasible for p < 9)
+  - `"random"`: Uniformly random permutations
+  - `"argsort"`: Quasi-Monte Carlo permutations using argsort
+  - `"permutohedron"`: Quasi-Monte Carlo permutations from permutohedron lattice
+  - Custom array or tuple of permutations
+- `antithetical`: Use antithetical (paired) sampling for variance reduction (Default `True`).
+- `return_attribution_history`: Return convergence history of attributions (Default `False`).
+- `n_jobs`: Number of parallel jobs; use `-1` for all CPU cores (Default `1`).
 
 `ls_spa` returns a `ShapleyResults` object. The `ShapleyResults` object
 has the fields:
 
 - `attribution`: Array of Shapley values for each feature.
-- `attribution_history`: Array of Shapley values for each iteration.
-  `None` if `return_history=False` in `ls_spa` call.
-- `theta`: Array of regression coefficients.
-- `overall_error`: Mean absolute error of the Shapley values.
-- `error_history`: Array of mean absolute errors for each iteration.
-  `None` if `return_history=False` in `ls_spa` call.
-- `attribution_errors`: Array of absolute errors for each feature.
-- `r_squared`: Out-of-sample R-squared statistic of the regression.
+- `theta`: Array of regression coefficients with all features.
+- `r_squared`: Out-of-sample R² with all features.
+- `overall_error`: Estimated error (95th percentile L2 norm) in Shapley attribution vector.
+- `attribution_errors`: Array of estimated errors for each feature's attribution.
+- `error_history`: Array of error estimates after each batch. `None` if using exact computation.
+- `attribution_history`: Array of attribution estimates over time. `None` if `return_attribution_history=False`.
 
 ## Citing
 

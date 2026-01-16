@@ -382,6 +382,15 @@ wheels = [
 ]
 
 [[package]]
+name = "joblib"
+version = "1.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/5d/447af5ea094b9e4c4054f82e223ada074c552335b9b4b2d14bd9b35a67c4/joblib-1.5.2.tar.gz", hash = "sha256:3faa5c39054b2f03ca547da9b2f52fde67c06240c31853f306aea97f13647b55", size = 331077, upload-time = "2025-08-27T12:15:46.575Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/e8/685f47e0d754320684db4425a0967f7d3fa70126bffd76110b7009a0090f/joblib-1.5.2-py3-none-any.whl", hash = "sha256:4e1f0bdbb987e6d843c70cf43714cb276623def372df3c22fe5266b2670bc241", size = 308396, upload-time = "2025-08-27T12:15:45.188Z" },
+]
+
+[[package]]
 name = "jsonschema"
 version = "4.25.1"
 source = { registry = "https://pypi.org/simple" }
@@ -576,6 +585,7 @@ wheels = [
 name = "ls-spa"
 source = { editable = "." }
 dependencies = [
+    { name = "joblib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "scipy" },
@@ -596,6 +606,7 @@ notebook = [
 
 [package.metadata]
 requires-dist = [
+    { name = "joblib", specifier = ">=1.4.0,<2" },
     { name = "numpy", specifier = ">=1.24,<3" },
     { name = "pandas", specifier = ">=2.0,<3" },
     { name = "scipy", specifier = ">=1.10,<2" },
